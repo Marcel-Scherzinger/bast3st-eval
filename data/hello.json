@@ -6,14 +6,14 @@
       "tests": [
         {
           "title": "Begr\u00fc\u00dfe Alan",
-          "criterion": 11,
+          "criterion": 12,
           "input": [
             "Alan"
           ]
         },
         {
           "title": "Begr\u00fc\u00dfe Albert",
-          "criterion": 11,
+          "criterion": 12,
           "input": [
             "Albert"
           ]
@@ -24,89 +24,97 @@
   "hooks": {
     "before-all-categories": [
       [
-        15,
-        16
+        16,
+        18
       ]
     ]
   },
   "nodes": {
     "1": {
-      "op": "read-input"
+      "op": "lit",
+      "v": "Wie w\u00e4re es mit folgendem: Guten Tag "
     },
     "2": {
-      "op": "view",
-      "p": "values",
-      "m": 1
+      "op": "read-input"
     },
     "3": {
+      "op": "view",
+      "p": "values",
+      "m": 2
+    },
+    "4": {
       "op": "lit",
       "v": 0
     },
-    "4": {
-      "op": "mapitem",
-      "m": 2,
-      "k": [
-        3
-      ]
-    },
     "5": {
-      "op": "concat",
-      "a": [
-        "Wie w\u00e4re es mit folgendem: Guten Tag ",
+      "op": "mapitem",
+      "m": 3,
+      "k": [
         4
       ]
     },
     "6": {
-      "op": "read-output"
+      "op": "concat",
+      "a": [
+        1,
+        5
+      ]
     },
     "7": {
-      "op": "view",
-      "p": "values",
-      "m": 6
+      "op": "read-output"
     },
     "8": {
+      "op": "view",
+      "p": "values",
+      "m": 7
+    },
+    "9": {
       "op": "lit",
       "v": -1
     },
-    "9": {
+    "10": {
       "op": "mapitem",
-      "m": 7,
+      "m": 8,
       "k": [
-        8
+        9
       ]
     },
-    "10": {
-      "op": "lit",
-      "v": 4
-    },
     "11": {
-      "op": "contain-text",
-      "fexp": 5,
-      "sub": 10,
-      "sup": 9
+      "op": "lit",
+      "v": 5
     },
     "12": {
-      "op": "read-blockcount"
+      "op": "contain-text",
+      "fexp": 6,
+      "sub": 11,
+      "sup": 10
     },
     "13": {
+      "op": "read-blockcount"
+    },
+    "14": {
       "op": "mapitem",
-      "m": 12,
+      "m": 13,
       "k": [
         "total"
       ]
     },
-    "14": {
+    "15": {
       "op": "lit",
       "v": 20
     },
-    "15": {
-      "op": ">",
-      "l": 13,
-      "r": 14
-    },
     "16": {
+      "op": ">",
+      "l": 14,
+      "r": 15
+    },
+    "17": {
+      "op": "lit",
+      "v": "Sie verwenden zu viele Bl\u00f6cke"
+    },
+    "18": {
       "op": "send-msg",
-      "t": "Sie verwenden zu viele Bl\u00f6cke",
+      "t": 17,
       "s": "error"
     }
   }

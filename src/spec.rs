@@ -111,7 +111,6 @@ impl<T> From<EntityId<T>> for u64 {
 pub enum Entity {
     Criterion(CriterionEntity),
     Action(ActionEntity),
-    LitString(String),
     Value(ValueEntity),
 }
 #[derive(Debug, PartialEq, Serialize, Deserialize)]

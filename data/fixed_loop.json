@@ -6,7 +6,7 @@
       "tests": [
         {
           "title": "1 bis 5",
-          "criterion": 8
+          "criterion": 9
         }
       ]
     }
@@ -14,74 +14,82 @@
   "hooks": {
     "before-all-categories": [
       [
-        12,
-        13
+        13,
+        15
       ]
     ]
   },
   "nodes": {
     "1": {
       "op": "lit",
-      "v": 110
+      "v": "Die korrekte Summe ist "
     },
     "2": {
-      "op": "concat",
-      "a": [
-        "Die korrekte Summe ist ",
-        1
-      ]
+      "op": "lit",
+      "v": 110
     },
     "3": {
-      "op": "read-output"
+      "op": "concat",
+      "a": [
+        1,
+        2
+      ]
     },
     "4": {
-      "op": "view",
-      "p": "values",
-      "m": 3
+      "op": "read-output"
     },
     "5": {
+      "op": "view",
+      "p": "values",
+      "m": 4
+    },
+    "6": {
       "op": "lit",
       "v": -1
     },
-    "6": {
+    "7": {
       "op": "mapitem",
-      "m": 4,
+      "m": 5,
       "k": [
-        5
+        6
       ]
     },
-    "7": {
-      "op": "lit",
-      "v": 1
-    },
     "8": {
-      "op": "contain-onlynum",
-      "fexp": 2,
-      "sub": 7,
-      "sup": 6
+      "op": "lit",
+      "v": 2
     },
     "9": {
-      "op": "read-blockcount"
+      "op": "contain-onlynum",
+      "fexp": 3,
+      "sub": 8,
+      "sup": 7
     },
     "10": {
+      "op": "read-blockcount"
+    },
+    "11": {
       "op": "mapitem",
-      "m": 9,
+      "m": 10,
       "k": [
         "total"
       ]
     },
-    "11": {
+    "12": {
       "op": "lit",
       "v": 30
     },
-    "12": {
-      "op": ">",
-      "l": 10,
-      "r": 11
-    },
     "13": {
+      "op": ">",
+      "l": 11,
+      "r": 12
+    },
+    "14": {
+      "op": "lit",
+      "v": "Sie verwenden zu viele Bl\u00f6cke"
+    },
+    "15": {
       "op": "send-msg",
-      "t": "Sie verwenden zu viele Bl\u00f6cke",
+      "t": 14,
       "s": "error"
     }
   }
