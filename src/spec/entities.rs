@@ -1,71 +1,10 @@
-use std::{cmp::Ordering, collections::BTreeMap};
-
-use derive_more::{From, Into};
-use either::Either;
-use serde::{Deserialize, Serialize};
-
-use crate::catchable::cerr;
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct Bast3StSpec {
-    title: String,
-    description: Option<String>,
-    #[serde(default)]
-    categories: Vec<Category>,
-    #[serde(default)]
-    hooks: SpecHooks,
-    #[serde(rename = "nodes")]
-    entities: BTreeMap<u64, Entity>,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct Category {
-    title: String,
-    description: Option<String>,
-    #[serde(default)]
-    tests: Vec<MainTest>,
-}
-
-#[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum PrimitiveValue {
-    Str(String),
-    Int(i64),
-    Float(f64),
-    Bool(bool),
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct MainTest {
-    title: String,
-    criterion: EntityId<CriterionEntity>,
-    input: Option<Vec<PrimitiveValue>>,
-    random_generation: Option<either::Either<u64, bool>>,
-    predefined_randoms: Option<Vec<either::Either<u64, f64>>>,
-    initial_variables: Option<BTreeMap<String, PrimitiveValue>>,
-    initial_lists: Option<BTreeMap<String, Vec<PrimitiveValue>>>,
-    #[serde(rename = "tests", default)]
-    alternative_tests: Vec<AlternativeTest>,
-    #[serde(default)]
-    hooks: MainTestHooks,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct AlternativeTest {
-    title: String,
-    criterion: EntityId<CriterionEntity>,
-    input: Option<Vec<PrimitiveValue>>,
-    random_generation: Option<either::Either<u64, bool>>,
-    predefined_randoms: Option<Vec<either::Either<u64, f64>>>,
-    initial_variables: Option<BTreeMap<String, PrimitiveValue>>,
-    initial_lists: Option<BTreeMap<String, Vec<PrimitiveValue>>>,
-    #[serde(default)]
-    hooks: AlternativeTestHooks,
-}
-
 // #####################################
 // ENTITIES
 // #####################################
+
+use serde::{Deserialize, Serialize};
+
+use crate::{catchable::cerr, spec::PrimitiveValue};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(from = "u64", into = "u64")]
@@ -467,44 +406,3 @@ pub enum ValueEntity {
         value: ValueReference,
     },
 }
-
-// #####################################
-// HOOKS
-// #####################################
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
-pub struct SpecHooks {
-    #[serde(rename = "before-all-categories", default)]
-    before_all_categories: HookList,
-    #[serde(rename = "after-all-categories", default)]
-    after_all_categories: HookList,
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
-pub struct CategoryHooks {
-    #[serde(rename = "before-all-tests", default)]
-    before_all_tests: HookList,
-    #[serde(rename = "after-all-tests", default)]
-    after_all_tests: HookList,
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
-pub struct MainTestHooks {
-    #[serde(rename = "before-main", default)]
-    before_main: HookList,
-    #[serde(rename = "before-alternatives", default)]
-    before_alternatives: HookList,
-    #[serde(rename = "after-alternatives", default)]
-    after_alternatives: HookList,
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
-pub struct AlternativeTestHooks {
-    #[serde(rename = "before-alt", default)]
-    before_alt: HookList,
-    #[serde(rename = "after-alt", default)]
-    after_alt: HookList,
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
-pub struct HookList(Vec<(EntityId<CriterionEntity>, EntityId<ActionEntity>)>);
