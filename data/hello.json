@@ -1,0 +1,113 @@
+{
+  "title": "Begr\u00fc\u00dfung eines gegebenen Namens",
+  "categories": [
+    {
+      "title": "Vornamen und Namen ohne Sonderzeichen",
+      "tests": [
+        {
+          "title": "Begr\u00fc\u00dfe Alan",
+          "criterion": 11,
+          "input": [
+            "Alan"
+          ]
+        },
+        {
+          "title": "Begr\u00fc\u00dfe Albert",
+          "criterion": 11,
+          "input": [
+            "Albert"
+          ]
+        }
+      ]
+    }
+  ],
+  "hooks": {
+    "before-all-categories": [
+      [
+        15,
+        16
+      ]
+    ]
+  },
+  "nodes": {
+    "1": {
+      "op": "read-input"
+    },
+    "2": {
+      "op": "view",
+      "p": "values",
+      "m": 1
+    },
+    "3": {
+      "op": "lit",
+      "v": 0
+    },
+    "4": {
+      "op": "mapitem",
+      "m": 2,
+      "k": [
+        3
+      ]
+    },
+    "5": {
+      "op": "concat",
+      "a": [
+        "Wie w\u00e4re es mit folgendem: Guten Tag ",
+        4
+      ]
+    },
+    "6": {
+      "op": "read-output"
+    },
+    "7": {
+      "op": "view",
+      "p": "values",
+      "m": 6
+    },
+    "8": {
+      "op": "lit",
+      "v": -1
+    },
+    "9": {
+      "op": "mapitem",
+      "m": 7,
+      "k": [
+        8
+      ]
+    },
+    "10": {
+      "op": "lit",
+      "v": 4
+    },
+    "11": {
+      "op": "contain-text",
+      "fexp": 5,
+      "sub": 10,
+      "sup": 9
+    },
+    "12": {
+      "op": "read-blockcount"
+    },
+    "13": {
+      "op": "mapitem",
+      "m": 12,
+      "k": [
+        "total"
+      ]
+    },
+    "14": {
+      "op": "lit",
+      "v": 20
+    },
+    "15": {
+      "op": ">",
+      "l": 13,
+      "r": 14
+    },
+    "16": {
+      "op": "send-msg",
+      "t": "Sie verwenden zu viele Bl\u00f6cke",
+      "s": "error"
+    }
+  }
+}
