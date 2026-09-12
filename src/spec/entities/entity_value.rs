@@ -168,3 +168,30 @@ pub enum ValueEntity {
         value: ValueReference,
     },
 }
+fn val(x: impl Into<RuntimeValue>) -> Machine<RuntimeValue> {
+    x.into().into()
+}
+
+impl ValueEntity {
+    pub fn machine(&self) -> Machine<RuntimeValue> {
+        match self {
+            Self::Lit { value } => Machine::from_final(RuntimeValue::Prim(value.clone())),
+            Self::Add { left, right } => {
+                (left, right).and_then_n(|left: Numeric, right: Numeric| {
+                    val(left.q_add_numbers(&right, &mut ()))
+                })
+            }
+            Self::Sub { left, right } => {
+                (left, right).and_then_n(|left: Numeric, right: Numeric| {
+                    val(left.q_sub_numbers(&right, &mut ()))
+                })
+            }
+            Self::Mul { left, right } => {
+                (left, right).and_then_n(|left: Numeric, right: Numeric| {
+                    val(left.q_mul_numbers(&right, &mut ()))
+                })
+            }
+            _ => todo!(),
+        }
+    }
+}
