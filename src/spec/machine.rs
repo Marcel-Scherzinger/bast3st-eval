@@ -1,5 +1,7 @@
 use std::{borrow::Cow, collections::BTreeMap, hash::Hash, sync::Arc};
 
+use either::Either;
+
 use super::runtime::*;
 use crate::{
     catchable::cerr,
@@ -10,8 +12,18 @@ use crate::{
 };
 
 pub type AllRuntimeValues = BTreeMap<EntityId<Entity>, RuntimeAny>;
+pub struct Context(AllRuntimeValues);
 
-pub type Pushable<R> = Box<dyn for<'a> FnOnce(&'a AllRuntimeValues) -> Machine<R>>;
+impl Context {
+    pub fn get_by_id(&self, key: &EntityId<Entity>) -> Option<&RuntimeAny> {
+        todo!()
+    }
+    pub fn get_by_selector(&self, key: &Selector) -> Result<&RuntimeValue, FatalError> {
+        todo!()
+    }
+}
+
+pub type Pushable<R> = Box<dyn for<'a> FnOnce(&'a Context) -> Machine<R>>;
 
 pub enum InnerMachine<R> {
     Final(R),
@@ -25,7 +37,7 @@ pub enum FatalError {
 pub struct Machine<R> {
     /// value that is missing and needs to be computed first before this
     /// machine can continue
-    missing_value: Option<EntityId<Entity>>,
+    missing_value: Option<Either<EntityId<Entity>, Selector>>,
     /// other nodes whose value changes will affect the value of this computation
     dependencies: Vec<EntityId<Entity>>,
     inner: Result<InnerMachine<R>, FatalError>,
@@ -44,7 +56,7 @@ impl<R: 'static> Machine<R> {
     pub fn map<U>(self, closure: impl FnOnce(R) -> U + 'static) -> Machine<U> {
         let new_inner = match self.inner {
             Ok(InnerMachine::Pushable(inner_closure)) => {
-                let mapped_closure = move |all: &AllRuntimeValues| -> Machine<U> {
+                let mapped_closure = move |all: &Context| -> Machine<U> {
                     let r_value: Machine<R> = inner_closure(all);
                     r_value.map(closure)
                 };
@@ -138,8 +150,8 @@ where
         closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
     ) -> Machine<R> {
         let id: EntityId<Entity> = self.cast_id();
-        let on_push = move |val: &AllRuntimeValues| {
-            let Some(delivered) = val.get(&id) else {
+        let on_push = move |val: &Context| {
+            let Some(delivered) = val.get_by_id(&id) else {
                 return FatalError::DeliveredValueStillMissing(id).into();
             };
             let converted: Cow<'_, RuntimeT> = match RuntimeT::from_any(delivered) {
@@ -149,7 +161,7 @@ where
             closure(converted)
         };
         Machine {
-            missing_value: Some(id),
+            missing_value: Some(Either::Left(id)),
             dependencies: vec![],
             inner: Ok(InnerMachine::Pushable(Box::new(on_push))),
         }
@@ -171,7 +183,7 @@ where
             Self::LitString(text) => {
                 let any = RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Str(text.clone())));
                 let run = RuntimeT::from_any(&any).map(|c| c.into_owned());
-                let on_push = move |val: &AllRuntimeValues| {
+                let on_push = move |val: &Context| {
                     let converted: Cow<'_, RuntimeT> = match run {
                         Ok(o) => Cow::Owned(o),
                         Err(e) => return e.into(),
@@ -184,6 +196,35 @@ where
                     inner: Ok(InnerMachine::Pushable(Box::new(on_push))),
                 }
             }
+        }
+    }
+}
+
+impl<RuntimeT> MachineConstruction<Selector, RuntimeT> for Selector
+where
+    Selector: PossibleRuntimeValue<RuntimeT>,
+    RuntimeT: SpecializeFrom<RuntimeValue>,
+{
+    fn and_then_cow<R>(
+        &self,
+        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
+    ) -> Machine<R> {
+        let id = self.clone();
+        let on_push = move |val: &Context| {
+            let delivered: &RuntimeValue = match val.get_by_selector(&id) {
+                Ok(o) => o,
+                Err(e) => return Machine::from(e),
+            };
+            let converted: Cow<'_, RuntimeT> = match RuntimeT::specialize_from(delivered) {
+                Ok(o) => o,
+                Err(e) => return e.into(),
+            };
+            closure(converted)
+        };
+        Machine {
+            missing_value: Some(Either::Right(self.clone())),
+            dependencies: vec![],
+            inner: Ok(InnerMachine::Pushable(Box::new(on_push))),
         }
     }
 }

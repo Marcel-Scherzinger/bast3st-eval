@@ -5,7 +5,7 @@ use crate::{
     spec::{
         ActionEntity, CriterionEntity, Entity, EntityId, Numeric, PrimitiveValue, Text,
         ValueReference,
-        runtime::{Array, Mapping, RuntimeAction, RuntimeCriterion, RuntimeValue},
+        runtime::{Array, Mapping, RuntimeAction, RuntimeCriterion, RuntimeValue, Selector},
     },
 };
 
@@ -112,6 +112,7 @@ impl_possible!(ValueReference:
     //
     RuntimeValue, PrimitiveValue, Array, Mapping, Text, Numeric
 );
+impl_possible!(Selector: RuntimeValue, Array, Mapping);
 
 impl_marker!(
     CheapBorrowFromAny:
@@ -134,6 +135,30 @@ impl SpecializeFrom<Text> for PrimitiveValue {
         Ok(Cow::Owned(Self::Str(any.clone())))
     }
 }
+
+impl SpecializeFrom<RuntimeValue> for Array {
+    fn specialize_from<'a>(any: &'a RuntimeValue) -> Result<Cow<'a, Self>, cerr>
+    where
+        Self: Sized,
+    {
+        match any {
+            RuntimeValue::Array(a) => Ok(Cow::Borrowed(a)),
+            _ => Err(cerr::typing_notArray),
+        }
+    }
+}
+impl SpecializeFrom<RuntimeValue> for Mapping {
+    fn specialize_from<'a>(any: &'a RuntimeValue) -> Result<Cow<'a, Self>, cerr>
+    where
+        Self: Sized,
+    {
+        match any {
+            RuntimeValue::Mapping(a) => Ok(Cow::Borrowed(a)),
+            _ => Err(cerr::typing_notMapping),
+        }
+    }
+}
+
 impl<T: Clone> SpecializeFrom<T> for T {
     fn specialize_from<'a>(any: &'a T) -> Result<Cow<'a, Self>, cerr>
     where

@@ -5,7 +5,7 @@ use crate::{
     spec::{
         ActionEntity, CriterionEntity, EntityId, Numeric, PrimitiveValue, ValueReference,
         machine::{Machine, MachineConstruction, MachineConstructionN},
-        runtime::RuntimeValue,
+        runtime::{Array, Mapping, RuntimeValue, Selector},
     },
 };
 pub type MappingReference = ValueReference;
@@ -191,6 +191,13 @@ impl ValueEntity {
                     val(left.q_mul_numbers(&right, &mut ()))
                 })
             }
+            Self::ReadInput {} => Selector::Input.std_machine::<Array>(),
+            Self::ReadRandoms {} => Selector::Randoms.std_machine::<Array>(),
+            Self::ReadOutput {} => Selector::Output.std_machine::<Array>(),
+            Self::ReadParam {} => Selector::Param.std_machine::<Mapping>(),
+            Self::ReadLists {} => Selector::Lists.std_machine::<Mapping>(),
+            Self::ReadBlockcount {} => Selector::Blockcount.std_machine::<Mapping>(),
+            Self::ReadVariables {} => Selector::Variables.std_machine::<Mapping>(),
             _ => todo!(),
         }
     }

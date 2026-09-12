@@ -5,6 +5,7 @@ mod machine;
 mod runtime;
 mod structure;
 
+use runtime::Selector;
 use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
 
 use derive_more::{Deref, From, Into};
