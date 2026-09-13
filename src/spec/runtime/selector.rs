@@ -23,6 +23,6 @@ impl Selector {
         Out: SpecializeFrom<RuntimeValue>,
         RuntimeValue: From<Out>,
     {
-        self.and_then(|x: Out| Machine::from_final(RuntimeValue::from(x)))
+        self.query(|x: Out| Machine::from_final(RuntimeValue::from(x)))
     }
 }

@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, sync::Arc};
 mod marker;
 mod selector;
 
-use derive_more::From;
+use derive_more::{Deref, From};
 pub use marker::MachineReturnVal;
 pub(super) use marker::{CheapBorrowFromAny, PossibleRuntimeValue, Specialize, SpecializeFrom};
 pub use selector::Selector;
@@ -25,10 +25,16 @@ pub struct RuntimeCriterion(pub(super) bool);
 #[derive(Debug, Clone, Hash)]
 pub struct RuntimeAction;
 
-#[derive(Debug, Clone)]
-pub struct Array(Arc<[PrimitiveValue]>);
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deref)]
+pub struct Array(Arc<[RuntimeValue]>);
+#[derive(Debug, Clone, Deref)]
 pub struct Mapping(Arc<BTreeMap<PrimitiveValue, RuntimeValue>>);
+
+impl<P: Into<RuntimeValue>> FromIterator<P> for Array {
+    fn from_iter<T: IntoIterator<Item = P>>(iter: T) -> Self {
+        Self(iter.into_iter().map(|x| x.into()).collect())
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum RuntimeValue {

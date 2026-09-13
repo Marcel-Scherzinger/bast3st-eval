@@ -26,6 +26,7 @@ impl cerr {
     pub const typing_notCriterion: cerr = cerr::any;
     pub const typing_notText: cerr = cerr::any;
     pub const typing_notNumeric: cerr = cerr::any;
+    pub const exotic_unknownPerspective: cerr = cerr::any;
 }
 
 /*

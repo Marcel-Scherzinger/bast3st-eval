@@ -31,6 +31,7 @@ mod _sealed {
     pub trait CheapBorrowFromAny {}
 }
 pub(crate) use _sealed::{CheapBorrowFromAny, PossibleRuntimeValue, Specialize, SpecializeFrom};
+use scratch_test_value::SNumber;
 pub trait MachineReturnVal {}
 
 macro_rules! impl_specialize {
@@ -95,6 +96,19 @@ impl_specialize!(
     o
 );
 
+impl_specialize!(
+    Array,
+    cerr::typing_notArray,
+    RuntimeAny::Value(RuntimeValue::Array(o)),
+    o
+);
+impl_specialize!(
+    Mapping,
+    cerr::typing_notMapping,
+    RuntimeAny::Value(RuntimeValue::Mapping(o)),
+    o
+);
+
 impl_possible!(EntityId<Entity>:
     //
     RuntimeAny,
@@ -123,7 +137,8 @@ impl_marker!(
     PrimitiveValue,
     Array,
     Mapping,
-    Text
+    Text,
+    SNumber
 );
 impl_marker!(MachineReturnVal: RuntimeAction, RuntimeCriterion, RuntimeValue);
 

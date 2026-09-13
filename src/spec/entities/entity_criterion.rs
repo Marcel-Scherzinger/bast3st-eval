@@ -1,10 +1,14 @@
-use std::{collections::BTreeMap, fmt::Debug};
+use std::{borrow::Cow, collections::BTreeMap, fmt::Debug};
 
 use serde::{Deserialize, Serialize};
 
 use crate::{
     catchable::cerr,
-    spec::{ActionEntity, Entity, EntityId, ValueReference},
+    spec::{
+        ActionEntity, Entity, EntityId, MachineConstruction, ValueReference,
+        machine::Machine,
+        runtime::{PossibleRuntimeValue, RuntimeCriterion, Specialize},
+    },
 };
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -125,4 +129,36 @@ pub enum CriterionEntity {
         #[serde(rename = "e")]
         else_: EntityId<CriterionEntity>,
     },
+}
+
+pub(super) fn eval_if_then_else<E, R: Clone + Specialize>(
+    if_: &EntityId<CriterionEntity>,
+    then_: E,
+    else_: E,
+) -> Machine<R>
+where
+    E: PossibleRuntimeValue<R> + MachineConstruction<E, R> + 'static,
+{
+    if_.query_ref(move |if_: &RuntimeCriterion| {
+        if if_.0 {
+            then_.query(|then_| Machine::from_final(then_))
+        } else {
+            else_.query(|else_| Machine::from_final(else_))
+        }
+    })
+}
+fn eval_any_of(
+    mut reversed_conditions: Vec<EntityId<CriterionEntity>>,
+) -> Machine<RuntimeCriterion> {
+    if let Some(x) = reversed_conditions.pop() {
+        x.query_ref(|crit: &RuntimeCriterion| {
+            if crit.0 {
+                crit.clone().into()
+            } else {
+                eval_any_of(reversed_conditions)
+            }
+        })
+    } else {
+        RuntimeCriterion(false).into()
+    }
 }

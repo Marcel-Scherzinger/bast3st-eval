@@ -36,3 +36,19 @@ impl From<String> for Text {
         Self(value.into())
     }
 }
+
+impl<'a> From<&'a str> for Text {
+    fn from(value: &'a str) -> Self {
+        Self(value.into())
+    }
+}
+impl<'a> From<&'a str> for PrimitiveValue {
+    fn from(value: &'a str) -> Self {
+        Self::Str(value.into())
+    }
+}
+impl From<String> for PrimitiveValue {
+    fn from(value: String) -> Self {
+        Self::Str(value.into())
+    }
+}
