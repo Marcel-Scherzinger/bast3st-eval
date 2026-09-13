@@ -16,13 +16,7 @@ mod _sealed {
 
     use crate::{catchable::cerr, spec::runtime::RuntimeAny};
 
-    pub trait Specialize: Clone {
-        fn from_any<'a>(any: &'a RuntimeAny) -> Result<Cow<'a, Self>, cerr>
-        where
-            Self: Sized;
-    }
-
-    pub trait SpecializeFrom<Target>: Clone {
+    pub trait SpecializeFrom<Target = RuntimeAny>: Clone {
         fn specialize_from<'a>(any: &'a Target) -> Result<Cow<'a, Self>, cerr>
         where
             Self: Sized;
@@ -30,19 +24,20 @@ mod _sealed {
     pub trait PossibleRuntimeValue<RuntimeT> {}
     pub trait CheapBorrowFromAny {}
 }
-pub(crate) use _sealed::{CheapBorrowFromAny, PossibleRuntimeValue, Specialize, SpecializeFrom};
+pub(crate) use _sealed::{CheapBorrowFromAny, PossibleRuntimeValue, SpecializeFrom};
 use scratch_test_value::SNumber;
 pub trait MachineReturnVal {}
 
 macro_rules! impl_specialize {
     ($ty: ty, $err: expr, $t: pat, $o: ident) => {
-        impl Specialize for $ty {
-            fn from_any<'a>(any: &'a RuntimeAny) -> Result<Cow<'a, Self>, cerr>
+        impl SpecializeFrom for $ty {
+            fn specialize_from<'a>(any: &'a RuntimeAny) -> Result<Cow<'a, Self>, cerr>
             where
                 Self: Sized,
             {
                 match any {
                     $t => Ok(Cow::Borrowed($o)),
+                    RuntimeAny::Catchable(old_err) => Err(*old_err),
                     _ => Err($err),
                 }
             }
@@ -183,8 +178,8 @@ impl<T: Clone> SpecializeFrom<T> for T {
     }
 }
 
-impl Specialize for Text {
-    fn from_any<'a>(any: &'a RuntimeAny) -> Result<Cow<'a, Self>, cerr>
+impl SpecializeFrom for Text {
+    fn specialize_from<'a>(any: &'a RuntimeAny) -> Result<Cow<'a, Self>, cerr>
     where
         Self: Sized,
     {

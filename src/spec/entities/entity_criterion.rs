@@ -7,7 +7,7 @@ use crate::{
     spec::{
         ActionEntity, Entity, EntityId, MachineConstruction, ValueReference,
         machine::Machine,
-        runtime::{PossibleRuntimeValue, RuntimeCriterion, Specialize},
+        runtime::{PossibleRuntimeValue, RuntimeCriterion, SpecializeFrom},
     },
 };
 
@@ -131,7 +131,7 @@ pub enum CriterionEntity {
     },
 }
 
-pub(super) fn eval_if_then_else<E, R: Clone + Specialize>(
+pub(super) fn eval_if_then_else<E, R: Clone + SpecializeFrom>(
     if_: &EntityId<CriterionEntity>,
     then_: E,
     else_: E,

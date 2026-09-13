@@ -4,7 +4,7 @@ mod selector;
 
 use derive_more::{Deref, From};
 pub use marker::MachineReturnVal;
-pub(super) use marker::{CheapBorrowFromAny, PossibleRuntimeValue, Specialize, SpecializeFrom};
+pub(super) use marker::{CheapBorrowFromAny, PossibleRuntimeValue, SpecializeFrom};
 pub use selector::Selector;
 
 use crate::{

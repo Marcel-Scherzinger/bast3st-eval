@@ -139,7 +139,7 @@ pub trait MachineConstruction<E, RuntimeT>: PossibleRuntimeValue<RuntimeT> {
 impl<E, RuntimeT> MachineConstruction<E, RuntimeT> for EntityId<E>
 where
     EntityId<E>: PossibleRuntimeValue<RuntimeT>,
-    RuntimeT: Clone + Specialize,
+    RuntimeT: Clone + SpecializeFrom,
     Entity: From<E>,
 {
     fn query_cow<R>(
@@ -151,7 +151,7 @@ where
             let Some(delivered) = val.get_by_id(&id) else {
                 return FatalError::DeliveredValueStillMissing(id).into();
             };
-            let converted: Cow<'_, RuntimeT> = match RuntimeT::from_any(delivered) {
+            let converted: Cow<'_, RuntimeT> = match RuntimeT::specialize_from(delivered) {
                 Ok(o) => o,
                 Err(e) => return e.into(),
             };
@@ -168,7 +168,7 @@ where
 impl<RuntimeT> MachineConstruction<ValueReference, RuntimeT> for ValueReference
 where
     ValueReference: PossibleRuntimeValue<RuntimeT>,
-    RuntimeT: Clone + Specialize + /*SpecializeFrom<Text> +*/ 'static,
+    RuntimeT: Clone + SpecializeFrom + /*SpecializeFrom<Text> +*/ 'static,
     EntityId<Entity>: PossibleRuntimeValue<RuntimeT>,
 {
     fn query_cow<R>(
@@ -179,7 +179,7 @@ where
             Self::EntityId(id) => id.cast_id::<Entity>().query_cow(closure),
             Self::LitString(text) => {
                 let any = RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Str(text.clone())));
-                let run = RuntimeT::from_any(&any).map(|c| c.into_owned());
+                let run = RuntimeT::specialize_from(&any).map(|c| c.into_owned());
                 let on_push = move |val: &Context| {
                     let converted: Cow<'_, RuntimeT> = match run {
                         Ok(o) => Cow::Owned(o),
