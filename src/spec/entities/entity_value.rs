@@ -268,47 +268,7 @@ impl ValueEntity {
                 only_if,
                 default_value,
                 action,
-            } => {
-                let error = *error;
-                let default_value = default_value.clone();
-                let action = *action;
-                let only_if = *only_if;
-                let on_only_if_not_false = move |found_error: cerr| {
-                    let machine = if let Some(default_value) = default_value {
-                        default_value.query(|default: RuntimeValue| default.into())
-                    } else {
-                        Machine::from(found_error)
-                    };
-
-                    if let Some(action) = action {
-                        action.query(|action: RuntimeAction| machine.with_action(action))
-                    } else {
-                        machine
-                    }
-                };
-
-                value.query(move |value: RuntimeAny| {
-                    let found_error: cerr = match value {
-                        RuntimeAny::Value(happy) => return Machine::from_final(happy),
-                        RuntimeAny::Catchable(found_error) => found_error,
-                        RuntimeAny::Action(_) | RuntimeAny::Criterion(_) => cerr::typing_notValue,
-                    };
-                    if !error.contains(found_error) {
-                        return found_error.into();
-                    }
-
-                    if let Some(only_if) = only_if {
-                        only_if.query(move |only_if: RuntimeCriterion| {
-                            if only_if.is_not_fulfilled() {
-                                return found_error.into();
-                            }
-                            on_only_if_not_false(found_error)
-                        })
-                    } else {
-                        on_only_if_not_false(found_error)
-                    }
-                })
-            }
+            } => eval_catch(value, *error, *only_if, default_value.clone(), *action),
             Self::NetworkRequest {
                 server,
                 route,
@@ -319,31 +279,13 @@ impl ValueEntity {
                 let reversed_json = json
                     .as_ref()
                     .map(|json| json.iter().cloned().rev().collect());
-                let server: Text = server.into();
-                let method = *method;
-                let allowed_status = allowed_status.clone();
-                route.query(move |route: Text| {
-                    let req = match method {
-                        NetworkMethod::Get => {
-                            // TODO: check if json is set even if it shouldn't
-                            NetworkRequest::new_get(server, route).query(Machine::from_final)
-                        }
-                        NetworkMethod::Post => {
-                            if let Some(reversed_json) = reversed_json {
-                                eval_post_request(server, route, reversed_json, vec![])
-                            } else {
-                                NetworkRequest::new_post(server, route, None)
-                                    .query(Machine::from_final)
-                            }
-                        }
-                    };
-                    req.and_then(|resp: NetworkResponse| {
-                        if allowed_status.is_some_and(|allowed| !allowed.contains(&resp.status())) {
-                            return cerr::network_statusDisallowed.into();
-                        }
-                        RuntimeValue::Mapping(resp.into()).into()
-                    })
-                })
+                eval_network_request(
+                    server.into(),
+                    route.clone(),
+                    *method,
+                    allowed_status.clone(),
+                    reversed_json,
+                )
             }
             Self::Length { value } => value.query(|value: RuntimeValue| {
                 let length: usize = match value {
@@ -395,6 +337,80 @@ impl ValueEntity {
             }
         }
     }
+}
+
+fn eval_catch(
+    value: &ValueReference,
+    error: cerr,
+    only_if: Option<EntityId<CriterionEntity>>,
+    default_value: Option<ValueReference>,
+    action: Option<EntityId<ActionEntity>>,
+) -> Machine<RuntimeValue> {
+    let on_only_if_not_false = move |found_error: cerr| {
+        let machine = if let Some(default_value) = default_value {
+            default_value.query(|default: RuntimeValue| default.into())
+        } else {
+            Machine::from(found_error)
+        };
+
+        if let Some(action) = action {
+            action.query(|action: RuntimeAction| machine.with_action(action))
+        } else {
+            machine
+        }
+    };
+
+    value.query(move |value: RuntimeAny| {
+        let found_error: cerr = match value {
+            RuntimeAny::Value(happy) => return Machine::from_final(happy),
+            RuntimeAny::Catchable(found_error) => found_error,
+            RuntimeAny::Action(_) | RuntimeAny::Criterion(_) => cerr::typing_notValue,
+        };
+        if !error.contains(found_error) {
+            return found_error.into();
+        }
+
+        if let Some(only_if) = only_if {
+            only_if.query(move |only_if: RuntimeCriterion| {
+                if only_if.is_not_fulfilled() {
+                    return found_error.into();
+                }
+                on_only_if_not_false(found_error)
+            })
+        } else {
+            on_only_if_not_false(found_error)
+        }
+    })
+}
+
+fn eval_network_request(
+    server: Text,
+    route: ValueReference,
+    method: NetworkMethod,
+    allowed_status: Option<Vec<u16>>,
+    reversed_json: Option<Vec<(ValueReference, ValueReference)>>,
+) -> Machine<RuntimeValue> {
+    route.query(move |route: Text| {
+        let req = match method {
+            NetworkMethod::Get => {
+                // TODO: check if json is set even if it shouldn't
+                NetworkRequest::new_get(server, route).query(Machine::from_final)
+            }
+            NetworkMethod::Post => {
+                if let Some(reversed_json) = reversed_json {
+                    eval_post_request(server, route, reversed_json, vec![])
+                } else {
+                    NetworkRequest::new_post(server, route, None).query(Machine::from_final)
+                }
+            }
+        };
+        req.and_then(|resp: NetworkResponse| {
+            if allowed_status.is_some_and(|allowed| !allowed.contains(&resp.status())) {
+                return cerr::network_statusDisallowed.into();
+            }
+            RuntimeValue::Mapping(resp.into()).into()
+        })
+    })
 }
 
 fn eval_post_request(
