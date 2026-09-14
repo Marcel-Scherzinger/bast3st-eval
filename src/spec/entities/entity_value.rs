@@ -294,7 +294,7 @@ impl ValueEntity {
 
                     if let Some(only_if) = only_if {
                         only_if.query(move |only_if: RuntimeCriterion| {
-                            if !only_if.0 {
+                            if only_if.is_not_fulfilled() {
                                 return found_error.into();
                             }
                             on_only_if_not_false(found_error)

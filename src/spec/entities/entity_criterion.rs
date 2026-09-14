@@ -140,7 +140,7 @@ where
     E: PossibleRuntimeValue<R> + MachineConstruction<E, R> + 'static,
 {
     if_.query_ref(move |if_: &RuntimeCriterion| {
-        if if_.0 {
+        if if_.is_fulfilled() {
             then_.query(|then_| Machine::from_final(then_))
         } else {
             else_.query(|else_| Machine::from_final(else_))
@@ -152,13 +152,13 @@ fn eval_any_of(
 ) -> Machine<RuntimeCriterion> {
     if let Some(x) = reversed_conditions.pop() {
         x.query_ref(|crit: &RuntimeCriterion| {
-            if crit.0 {
+            if crit.is_fulfilled() {
                 crit.clone().into()
             } else {
                 eval_any_of(reversed_conditions)
             }
         })
     } else {
-        RuntimeCriterion(false).into()
+        RuntimeCriterion::new_unfulfilled(None).into()
     }
 }

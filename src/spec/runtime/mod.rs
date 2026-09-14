@@ -12,6 +12,7 @@ pub use network::{InnerNetworkRequest, NetworkRequest, NetworkResponse};
 pub use selector::SelectableTaskRequest;
 pub use selector::Selector;
 
+use crate::spec::Text;
 use crate::{
     catchable::cerr,
     spec::{EntityId, MapKey, PrimitiveValue},
@@ -26,9 +27,36 @@ pub enum RuntimeAny {
 }
 
 #[derive(Debug, Clone, Hash)]
-pub struct RuntimeCriterion(pub(super) bool);
+pub struct RuntimeCriterion {
+    is_fulfilled: bool,
+    failure_explaination: Option<Text>,
+}
 #[derive(Debug, Clone, Hash)]
 pub struct RuntimeAction;
+
+impl RuntimeCriterion {
+    pub fn new(is_fulfilled: bool, failure_explaination: Option<Text>) -> Self {
+        Self {
+            is_fulfilled,
+            failure_explaination,
+        }
+    }
+    pub fn new_fulfilled() -> Self {
+        Self::new(true, None)
+    }
+    pub fn new_unfulfilled(failure_explaination: Option<Text>) -> Self {
+        Self::new(true, failure_explaination)
+    }
+    pub fn is_fulfilled(&self) -> bool {
+        self.is_fulfilled
+    }
+    pub fn is_not_fulfilled(&self) -> bool {
+        !self.is_fulfilled
+    }
+    pub fn failure_explaination(&self) -> Option<&Text> {
+        self.failure_explaination.as_ref()
+    }
+}
 
 #[derive(Debug, Clone, Deref, PartialEq, PartialOrd)]
 pub struct Array(Arc<[RuntimeValue]>);
