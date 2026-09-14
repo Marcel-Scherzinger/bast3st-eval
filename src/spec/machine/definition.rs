@@ -16,12 +16,44 @@ pub type AllRuntimeValues = BTreeMap<EntityId<Entity>, RuntimeAny>;
 pub type Param<'a> = Result<&'a RuntimeAny, FatalError>;
 
 pub type Pushable<R> = Box<dyn for<'a> FnOnce(Param<'a>) -> Machine<R>>;
+type TaskPushable<T, R> =
+    Box<dyn for<'a> FnOnce(Cow<'a, <T as SpecificTaskRequest>::MainOutput>) -> Machine<R>>;
 
 enum InnerMachine<R> {
     Final(R),
     Pushable(MissingValue, Pushable<R>),
+    OnTask(OnTask<R>),
     Catchable(cerr),
 }
+#[derive(derive_more::From)]
+pub enum OnTask<R> {
+    NetworkRequest((NetworkRequest, TaskPushable<NetworkRequest, R>)),
+    CompiledRegex((CompiledRegex, TaskPushable<CompiledRegex, R>)),
+}
+
+impl<R: ClarifiedCerrMerging + 'static> OnTask<R> {
+    pub fn map<U>(self, closure: impl FnOnce(R) -> U + 'static) -> OnTask<U> {
+        match self {
+            Self::CompiledRegex((req, inner)) => {
+                OnTask::CompiledRegex((req, Box::new(move |val| inner(val).map(closure))))
+            }
+            Self::NetworkRequest((req, inner)) => {
+                OnTask::NetworkRequest((req, Box::new(move |val| inner(val).map(closure))))
+            }
+        }
+    }
+    pub fn and_then<U>(self, closure: impl FnOnce(R) -> Machine<U> + 'static) -> OnTask<U> {
+        match self {
+            Self::CompiledRegex((req, inner)) => {
+                OnTask::CompiledRegex((req, Box::new(move |val| inner(val).and_then(closure))))
+            }
+            Self::NetworkRequest((req, inner)) => {
+                OnTask::NetworkRequest((req, Box::new(move |val| inner(val).and_then(closure))))
+            }
+        }
+    }
+}
+
 pub enum FatalError {
     DeliveredValueStillMissing(EntityId<Entity>),
 }
@@ -31,10 +63,6 @@ pub enum FatalError {
 pub(super) enum MissingValue {
     EntityId(EntityId<Entity>),
     Selector(Selector),
-    /// This task first needs to be picked up and is then replaced by
-    /// a [`Selector::TaskResult`] that contains an id making the resulting
-    /// value of the required task avaiable
-    SelectableTaskRequest(SelectableTaskRequest),
     /// The stored closure doesn't require any value at all and it is expected to *not*
     /// process that argument of type Param<'_> in any way. To ensure that no wrong
     /// values propagate, closures requiring no value will be called with a [`FatalError`]
@@ -60,8 +88,16 @@ impl<R> Machine<R> {
             actions: vec![],
         }
     }
-    pub(super) fn from_task(task: impl Into<SelectableTaskRequest>, pushable: Pushable<R>) -> Self {
-        Self::from_pushable(task.into(), pushable)
+    pub(super) fn from_task<T>(task: T, pushable: TaskPushable<T, R>) -> Self
+    where
+        OnTask<R>: From<(T, TaskPushable<T, R>)>,
+        T: SpecificTaskRequest,
+    {
+        Self {
+            dependencies: vec![],
+            actions: vec![],
+            inner: Ok(InnerMachine::OnTask((task, pushable).into())),
+        }
     }
 
     pub fn from_final(v: R) -> Self {
@@ -94,7 +130,7 @@ pub(super) fn cast_param<'a, RuntimeT: SpecializeFrom>(
     param: Param<'a>,
 ) -> Result<Cow<'a, RuntimeT>, Either<cerr, FatalError>> {
     match param {
-        Ok(any) => RuntimeT::specialize_from(any).map_err(Either::Left),
+        Ok(any) => RuntimeT::specialize_from(Cow::Borrowed(any)).map_err(Either::Left),
         Err(err) => Err(Either::Right(err)),
     }
 }
@@ -132,6 +168,9 @@ impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
                     actions,
                 };
             }
+            Ok(InnerMachine::OnTask(on_task)) => {
+                Ok(InnerMachine::OnTask(on_task.and_then(closure)))
+            }
             Ok(InnerMachine::Catchable(c)) => Ok(InnerMachine::Catchable(c)),
             Err(err) => Err(err),
         };
@@ -150,6 +189,7 @@ impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
                 };
                 Ok(InnerMachine::Pushable(missing, Box::new(mapped_closure)))
             }
+            Ok(InnerMachine::OnTask(on_task)) => Ok(InnerMachine::OnTask(on_task.map(closure))),
             Ok(InnerMachine::Final(r)) => Ok(InnerMachine::Final(closure(r))),
             Ok(InnerMachine::Catchable(c)) => Ok(InnerMachine::Catchable(c)),
             Err(err) => Err(err),
@@ -205,5 +245,10 @@ impl<'a, R: MachineReturnVal + Clone> From<Cow<'a, R>> for Machine<R> {
 impl<R: ClarifiedCerrMerging + 'static> From<cerr> for Machine<R> {
     fn from(value: cerr) -> Self {
         Self::from_err(Either::Left(value))
+    }
+}
+impl<R: ClarifiedCerrMerging + 'static> From<Result<Machine<R>, cerr>> for Machine<R> {
+    fn from(value: Result<Machine<R>, cerr>) -> Self {
+        Self::from_res(value.map_err(Either::Left))
     }
 }

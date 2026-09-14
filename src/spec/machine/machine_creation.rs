@@ -2,14 +2,15 @@ use std::borrow::Cow;
 
 use crate::spec::{
     Entity, EntityId, PrimitiveValue, ValueReference,
-    machine::{Machine, MissingValue, Param, cast_param},
+    machine::{Machine, MissingValue, OnTask, Param, cast_param},
     runtime::{
-        CheapBorrowFromAny, ClarifiedCerrMerging, PossibleRuntimeValue, RuntimeAny, RuntimeValue,
-        SelectableTaskRequest, Selector, SpecializeFrom,
+        CheapBorrowFromAny, ClarifiedCerrMerging, CompiledRegex, NetworkRequest,
+        PossibleRuntimeValue, RuntimeAny, RuntimeValue, SelectableTaskRequest, Selector,
+        SpecializeFrom, SpecificTaskRequest,
     },
 };
 
-pub trait MachineConstruction<E, RuntimeT>: PossibleRuntimeValue<RuntimeT> {
+pub trait MachineConstruction<E, RuntimeT> {
     fn query_cow<R: ClarifiedCerrMerging + 'static>(
         &self,
         closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
@@ -67,7 +68,7 @@ where
             Self::EntityId(id) => id.cast_id::<Entity>().query_cow(closure),
             Self::LitString(text) => {
                 let any = RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Str(text.clone())));
-                let run = RuntimeT::specialize_from(&any).map(|c| c.into_owned());
+                let run = RuntimeT::specialize_from(Cow::Owned(any)).map(|c| c.into_owned());
                 let on_push = move |_: Param<'_>| {
                     let converted: Cow<'_, RuntimeT> = match run {
                         Ok(o) => Cow::Owned(o),
@@ -95,21 +96,28 @@ where
         Machine::from_pushable(self.clone(), Box::new(on_push))
     }
 }
-impl<RuntimeT, Task: Into<SelectableTaskRequest>> MachineConstruction<Task, RuntimeT> for Task
-where
-    Task: PossibleRuntimeValue<RuntimeT> + Clone,
-    RuntimeT: SpecializeFrom,
-{
-    fn query_cow<R: ClarifiedCerrMerging + 'static>(
-        &self,
-        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
-    ) -> Machine<R> {
-        Machine::from_task(
-            self.clone(),
-            Box::new(move |param: Param<'_>| Machine::from_res(cast_param(param).map(closure))),
-        )
-    }
+
+macro_rules! impl_task_queries {
+    ($task: ty) => {
+        impl<RuntimeT> MachineConstruction<$task, RuntimeT> for $task
+        where
+            RuntimeT: SpecializeFrom<<$task as SpecificTaskRequest>::MainOutput>,
+            <$task as SpecificTaskRequest>::MainOutput: Clone,
+        {
+            fn query_cow<R: ClarifiedCerrMerging + 'static>(
+                &self,
+                closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
+            ) -> Machine<R> {
+                Machine::from_task(
+                    self.clone(),
+                    Box::new(move |param| RuntimeT::specialize_from(param).map(closure).into()),
+                )
+            }
+        }
+    };
 }
+impl_task_queries!(NetworkRequest);
+impl_task_queries!(CompiledRegex);
 
 pub trait MachineConstructionN<Closure, Extra, Ret> {
     fn query_n(self, closure: Closure) -> Machine<Ret>;

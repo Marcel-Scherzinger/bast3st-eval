@@ -60,6 +60,11 @@ impl From<String> for PrimitiveValue {
         Self::Str(value.into())
     }
 }
+impl<'a> From<&'a str> for MapKey {
+    fn from(value: &'a str) -> Self {
+        Self::Str(value.into())
+    }
+}
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, From, Eq, Ord, Hash)]
 pub enum MapKey {

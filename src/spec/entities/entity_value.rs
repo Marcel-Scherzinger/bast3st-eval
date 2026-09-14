@@ -9,8 +9,8 @@ use crate::{
         entities::eval_if_then_else,
         machine::{Machine, MachineConstruction, MachineConstructionN},
         runtime::{
-            Array, Mapping, NetworkRequest, NetworkResponse, RuntimeAction, RuntimeAny,
-            RuntimeCriterion, RuntimeValue, Selector,
+            Array, CompiledRegex, Mapping, NetworkRequest, NetworkResponse, RuntimeAction,
+            RuntimeAny, RuntimeCriterion, RuntimeValue, Selector,
         },
     },
 };
@@ -122,8 +122,6 @@ pub enum ValueEntity {
     },
     #[serde(rename = "first-capture")]
     FirstCaptureOfRegex {
-        #[serde(rename = "fexp")]
-        failure_explaination: Option<ValueReference>,
         #[serde(rename = "p")]
         pattern: ValueReference,
         sup: ValueReference,
@@ -333,14 +331,28 @@ impl ValueEntity {
                         }
                     };
                     req.and_then(|resp: NetworkResponse| {
-                        if allowed_status.is_some_and(|allowed| !allowed.contains(resp.status())) {
+                        if allowed_status.is_some_and(|allowed| !allowed.contains(&resp.status())) {
                             return cerr::network_statusDisallowed.into();
                         }
                         RuntimeValue::Mapping(resp.into()).into()
                     })
                 })
             }
-            _ => todo!(),
+            Self::Length { value } => value.query(|value: RuntimeValue| {
+                let length: usize = match value {
+                    RuntimeValue::Array(array) => array.len(),
+                    RuntimeValue::Mapping(mapping) => mapping.len(),
+                    RuntimeValue::Prim(PrimitiveValue::Str(text)) => text.chars().count(),
+                    _ => return cerr::typing_notIterable.into(),
+                };
+                let length = length.try_into().unwrap_or(i64::MAX);
+                RuntimeValue::Prim(PrimitiveValue::Number(SNumber::Int(length))).into()
+            }),
+            Self::FirstCaptureOfRegex { pattern, sup } => {
+                (pattern, sup).query_n(|pattern: Text, sup: RuntimeValue| {
+                    CompiledRegex::from(pattern).query(|pattern: regex::Regex| todo!())
+                })
+            }
         }
     }
 }

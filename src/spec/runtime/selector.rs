@@ -1,10 +1,14 @@
 use std::sync::Arc;
 
-use crate::spec::{
-    MachineConstruction, Text,
-    machine::Machine,
-    runtime::{
-        PossibleRuntimeValue, RuntimeAny, RuntimeValue, SpecializeFrom, network::NetworkRequest,
+use crate::{
+    catchable::cerr,
+    spec::{
+        MachineConstruction, Text,
+        machine::Machine,
+        runtime::{
+            NetworkResponse, PossibleRuntimeValue, RuntimeAny, RuntimeValue, SpecializeFrom,
+            network::NetworkRequest,
+        },
     },
 };
 
@@ -27,6 +31,19 @@ pub enum Selector {
 #[derive(Debug, PartialEq, PartialOrd, Clone, derive_more::From)]
 pub enum SelectableTaskRequest {
     NetworkRequest(NetworkRequest),
+    CompiledRegex(CompiledRegex),
+}
+
+pub trait SpecificTaskRequest {
+    type MainOutput: Clone;
+}
+impl SpecificTaskRequest for NetworkRequest {
+    type MainOutput = NetworkResponse;
+}
+#[derive(Debug, PartialEq, PartialOrd, Clone, derive_more::From)]
+pub struct CompiledRegex(Text);
+impl SpecificTaskRequest for CompiledRegex {
+    type MainOutput = regex::Regex;
 }
 
 impl Selector {

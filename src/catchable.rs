@@ -30,6 +30,7 @@ impl cerr {
     pub const mapping_missingKey: cerr = cerr::any;
     pub const typing_notMapkey: cerr = cerr::any;
     pub const typing_notNetworkResp: cerr = cerr::any;
+    pub const typing_notIterable: cerr = cerr::any;
 }
 
 /*

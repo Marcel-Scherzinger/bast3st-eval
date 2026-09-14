@@ -9,9 +9,10 @@ pub(super) use marker::{
     CheapBorrowFromAny, ClarifiedCerrMerging, PossibleRuntimeValue, SpecializeFrom,
 };
 pub use network::{InnerNetworkRequest, NetworkRequest, NetworkResponse};
-pub use selector::SelectableTaskRequest;
 pub use selector::Selector;
+pub use selector::{CompiledRegex, SelectableTaskRequest, SpecificTaskRequest};
 
+use crate::spec::Numeric;
 use crate::spec::Text;
 use crate::{
     catchable::cerr,
@@ -58,14 +59,24 @@ impl RuntimeCriterion {
     }
 }
 
-#[derive(Debug, Clone, Deref, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Deref, PartialEq, PartialOrd, Default, From)]
 pub struct Array(Arc<[RuntimeValue]>);
-#[derive(Debug, Clone, Deref, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Deref, PartialEq, PartialOrd, Default, From)]
 pub struct Mapping(Arc<BTreeMap<MapKey, RuntimeValue>>);
 
 impl<P: Into<RuntimeValue>> FromIterator<P> for Array {
     fn from_iter<T: IntoIterator<Item = P>>(iter: T) -> Self {
         Self(iter.into_iter().map(|x| x.into()).collect())
+    }
+}
+impl From<BTreeMap<MapKey, RuntimeValue>> for Mapping {
+    fn from(value: BTreeMap<MapKey, RuntimeValue>) -> Self {
+        Self(value.into())
+    }
+}
+impl From<Vec<RuntimeValue>> for Array {
+    fn from(value: Vec<RuntimeValue>) -> Self {
+        Self(value.into())
     }
 }
 
@@ -92,5 +103,11 @@ impl From<Array> for RuntimeValue {
 impl From<Mapping> for RuntimeValue {
     fn from(value: Mapping) -> Self {
         Self::Mapping(value)
+    }
+}
+
+impl From<u16> for PrimitiveValue {
+    fn from(value: u16) -> Self {
+        Self::Number(Numeric::Int(value.into()))
     }
 }

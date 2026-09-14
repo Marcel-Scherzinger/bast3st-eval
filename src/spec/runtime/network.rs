@@ -1,9 +1,11 @@
-use std::sync::Arc;
+use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
+
+use scratch_test_value::SNumber;
 
 use crate::{
     catchable::cerr,
     spec::{
-        Text,
+        MapKey, PrimitiveValue, Text,
         runtime::{Mapping, RuntimeAny, RuntimeValue, SpecializeFrom},
     },
 };
@@ -41,42 +43,25 @@ pub enum InnerNetworkRequest {
     },
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+/// - status: u16
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct NetworkResponse {
     status: u16,
 }
 impl NetworkResponse {
-    pub fn status(&self) -> &u16 {
-        &self.status
+    pub fn new(status: u16) -> Self {
+        Self { status }
+    }
+
+    pub fn status(&self) -> u16 {
+        self.status
     }
 }
 
-impl SpecializeFrom<RuntimeAny> for NetworkResponse {
-    fn specialize_from<'a>(
-        any: &'a RuntimeAny,
-    ) -> Result<std::borrow::Cow<'a, Self>, crate::catchable::cerr>
-    where
-        Self: Sized,
-    {
-        match any {
-            RuntimeAny::Value(RuntimeValue::Mapping(m)) => Self::specialize_from(m),
-            RuntimeAny::Catchable(err) => Err(*err),
-            _ => Err(cerr::typing_notNetworkResp),
-        }
-    }
-}
-impl SpecializeFrom<Mapping> for NetworkResponse {
-    fn specialize_from<'a>(
-        any: &'a Mapping,
-    ) -> Result<std::borrow::Cow<'a, Self>, crate::catchable::cerr>
-    where
-        Self: Sized,
-    {
-        todo!()
-    }
-}
 impl From<NetworkResponse> for Mapping {
     fn from(value: NetworkResponse) -> Self {
-        todo!()
+        let mut mapping = BTreeMap::new();
+        mapping.insert("status".into(), value.status.into());
+        mapping.into()
     }
 }

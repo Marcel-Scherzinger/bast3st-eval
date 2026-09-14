@@ -20,8 +20,11 @@ mod _sealed {
 
     use crate::{catchable::cerr, spec::runtime::RuntimeAny};
 
-    pub trait SpecializeFrom<Target = RuntimeAny>: Clone {
-        fn specialize_from<'a>(any: &'a Target) -> Result<Cow<'a, Self>, cerr>
+    pub trait SpecializeFrom<Target = RuntimeAny>: Clone
+    where
+        Target: Clone,
+    {
+        fn specialize_from<'a>(any: Cow<'a, Target>) -> Result<Cow<'a, Self>, cerr>
         where
             Self: Sized;
     }
@@ -44,13 +47,17 @@ pub trait ClarifiedCerrMerging {
 macro_rules! impl_specialize {
     ($ty: ty, $err: expr, $t: pat, $o: ident) => {
         impl SpecializeFrom for $ty {
-            fn specialize_from<'a>(any: &'a RuntimeAny) -> Result<Cow<'a, Self>, cerr>
+            fn specialize_from<'a>(
+                any: std::borrow::Cow<'a, RuntimeAny>,
+            ) -> Result<Cow<'a, Self>, cerr>
             where
                 Self: Sized,
             {
                 match any {
-                    $t => Ok(Cow::Borrowed($o)),
-                    RuntimeAny::Catchable(old_err) => Err(*old_err),
+                    Cow::Borrowed($t) => Ok(Cow::Borrowed($o)),
+                    Cow::Owned($t) => Ok(Cow::Owned($o)),
+                    Cow::Owned(RuntimeAny::Catchable(old_err)) => Err(old_err),
+                    Cow::Borrowed(RuntimeAny::Catchable(old_err)) => Err(*old_err),
                     _ => Err($err),
                 }
             }
@@ -166,77 +173,93 @@ impl ClarifiedCerrMerging for RuntimeAny {
 }
 
 impl SpecializeFrom<Text> for PrimitiveValue {
-    fn specialize_from<'a>(any: &'a Text) -> Result<Cow<'a, Self>, cerr>
+    fn specialize_from<'a>(any: Cow<'a, Text>) -> Result<Cow<'a, Self>, cerr>
     where
         Self: Sized,
     {
-        Ok(Cow::Owned(Self::Str(any.clone())))
+        Ok(Cow::Owned(Self::Str(any.into_owned())))
     }
 }
 
 impl SpecializeFrom<RuntimeValue> for Array {
-    fn specialize_from<'a>(any: &'a RuntimeValue) -> Result<Cow<'a, Self>, cerr>
+    fn specialize_from<'a>(any: Cow<'a, RuntimeValue>) -> Result<Cow<'a, Self>, cerr>
     where
         Self: Sized,
     {
         match any {
-            RuntimeValue::Array(a) => Ok(Cow::Borrowed(a)),
+            Cow::Owned(RuntimeValue::Array(a)) => Ok(Cow::Owned(a)),
+            Cow::Borrowed(RuntimeValue::Array(a)) => Ok(Cow::Borrowed(a)),
             _ => Err(cerr::typing_notArray),
         }
     }
 }
 impl SpecializeFrom<RuntimeValue> for Mapping {
-    fn specialize_from<'a>(any: &'a RuntimeValue) -> Result<Cow<'a, Self>, cerr>
+    fn specialize_from<'a>(any: Cow<'a, RuntimeValue>) -> Result<Cow<'a, Self>, cerr>
     where
         Self: Sized,
     {
         match any {
-            RuntimeValue::Mapping(a) => Ok(Cow::Borrowed(a)),
+            Cow::Owned(RuntimeValue::Mapping(m)) => Ok(Cow::Owned(m)),
+            Cow::Borrowed(RuntimeValue::Mapping(m)) => Ok(Cow::Borrowed(m)),
             _ => Err(cerr::typing_notMapping),
         }
     }
 }
 impl SpecializeFrom for MapKey {
-    fn specialize_from<'a>(any: &'a RuntimeAny) -> Result<Cow<'a, Self>, cerr>
+    fn specialize_from<'a>(any: Cow<'a, RuntimeAny>) -> Result<Cow<'a, Self>, cerr>
     where
         Self: Sized,
     {
         match any {
-            RuntimeAny::Value(RuntimeValue::Prim(p)) => MapKey::specialize_from(p),
+            Cow::Borrowed(RuntimeAny::Value(RuntimeValue::Prim(p))) => {
+                MapKey::specialize_from(Cow::Borrowed(p))
+            }
+            Cow::Owned(RuntimeAny::Value(RuntimeValue::Prim(p))) => {
+                MapKey::specialize_from(Cow::<PrimitiveValue>::Owned(p))
+            }
+            Cow::Owned(RuntimeAny::Catchable(err)) => Err(err),
+            Cow::Borrowed(RuntimeAny::Catchable(err)) => Err(*err),
             _ => Err(cerr::typing_notMapkey),
         }
     }
 }
 impl SpecializeFrom<PrimitiveValue> for MapKey {
-    fn specialize_from<'a>(any: &'a PrimitiveValue) -> Result<Cow<'a, Self>, cerr>
+    fn specialize_from<'a>(any: Cow<'a, PrimitiveValue>) -> Result<Cow<'a, Self>, cerr>
     where
         Self: Sized,
     {
-        match any {
+        match any.into_owned() {
             PrimitiveValue::Str(s) => Ok(Cow::Owned(Self::Str(s.clone()))),
-            PrimitiveValue::Bool(b) => Ok(Cow::Owned(Self::Bool(*b))),
-            PrimitiveValue::Number(Numeric::Int(i)) => Ok(Cow::Owned(Self::Int(*i))),
+            PrimitiveValue::Bool(b) => Ok(Cow::Owned(Self::Bool(b))),
+            PrimitiveValue::Number(Numeric::Int(i)) => Ok(Cow::Owned(Self::Int(i))),
             _ => Err(cerr::typing_notMapkey),
         }
     }
 }
 
 impl<T: Clone> SpecializeFrom<T> for T {
-    fn specialize_from<'a>(any: &'a T) -> Result<Cow<'a, Self>, cerr>
+    fn specialize_from<'a>(any: Cow<'a, T>) -> Result<Cow<'a, Self>, cerr>
     where
         Self: Sized,
     {
-        Ok(Cow::Borrowed(any))
+        Ok(any)
     }
 }
 
 impl SpecializeFrom for Text {
-    fn specialize_from<'a>(any: &'a RuntimeAny) -> Result<Cow<'a, Self>, cerr>
+    fn specialize_from<'a>(any: Cow<'a, RuntimeAny>) -> Result<Cow<'a, Self>, cerr>
     where
         Self: Sized,
     {
         match any {
-            RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Str(s))) => Ok(Cow::Borrowed(s)),
+            Cow::Owned(RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Str(s)))) => {
+                Ok(Cow::Owned(s))
+            }
+            Cow::Borrowed(RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Str(s)))) => {
+                Ok(Cow::Borrowed(s))
+            }
+            Cow::Owned(RuntimeAny::Catchable(err)) => Err(err),
+            Cow::Borrowed(RuntimeAny::Catchable(err)) => Err(*err),
             _ => Err(cerr::typing_notText),
         }
     }
