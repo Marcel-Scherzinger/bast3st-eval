@@ -4,10 +4,14 @@ use serde::{Deserialize, Serialize};
 use crate::{
     catchable::cerr,
     spec::{
-        ActionEntity, CriterionEntity, EntityId, Numeric, PrimitiveValue, Text, ValueReference,
+        ActionEntity, CriterionEntity, EntityId, MapKey, NetworkMethod, Numeric, PrimitiveValue,
+        Text, ValueReference,
         entities::eval_if_then_else,
         machine::{Machine, MachineConstruction, MachineConstructionN},
-        runtime::{Array, Mapping, RuntimeCriterion, RuntimeValue, Selector},
+        runtime::{
+            Array, Mapping, NetworkRequest, NetworkResponse, RuntimeAction, RuntimeAny,
+            RuntimeCriterion, RuntimeValue, Selector,
+        },
     },
 };
 pub type MappingReference = ValueReference;
@@ -35,7 +39,7 @@ pub enum ValueEntity {
         server: String,
         route: ValueReference,
         // GET or POST
-        method: String,
+        method: NetworkMethod,
         #[serde(rename = "allowed-status")]
         allowed_status: Option<Vec<u16>>,
         json: Option<Vec<(ValueReference, ValueReference)>>,
@@ -249,9 +253,131 @@ impl ValueEntity {
                     ))
                 }
             }),
+            Self::Mapitem { mapping, keys } => {
+                let reversed_keys = keys.iter().rev().cloned().collect();
+                mapping.query(|mapping| eval_mapitem(mapping, reversed_keys))
+            }
+            Self::Catch {
+                value,
+                error,
+                only_if,
+                default_value,
+                action,
+            } => {
+                let error = *error;
+                let default_value = default_value.clone();
+                let action = *action;
+                let only_if = *only_if;
+                let on_only_if_not_false = move |found_error: cerr| {
+                    let machine = if let Some(default_value) = default_value {
+                        default_value.query(|default: RuntimeValue| default.into())
+                    } else {
+                        Machine::from(found_error)
+                    };
 
+                    if let Some(action) = action {
+                        action.query(|action: RuntimeAction| machine.with_action(action))
+                    } else {
+                        machine
+                    }
+                };
+
+                value.query(move |value: RuntimeAny| {
+                    let found_error: cerr = match value {
+                        RuntimeAny::Value(happy) => return Machine::from_final(happy),
+                        RuntimeAny::Catchable(found_error) => found_error,
+                        RuntimeAny::Action(_) | RuntimeAny::Criterion(_) => cerr::typing_notValue,
+                    };
+                    if !error.contains(found_error) {
+                        return found_error.into();
+                    }
+
+                    if let Some(only_if) = only_if {
+                        only_if.query(move |only_if: RuntimeCriterion| {
+                            if !only_if.0 {
+                                return found_error.into();
+                            }
+                            on_only_if_not_false(found_error)
+                        })
+                    } else {
+                        on_only_if_not_false(found_error)
+                    }
+                })
+            }
+            Self::NetworkRequest {
+                server,
+                route,
+                method,
+                allowed_status,
+                json,
+            } => {
+                let reversed_json = json
+                    .as_ref()
+                    .map(|json| json.iter().cloned().rev().collect());
+                let server: Text = server.into();
+                let method = *method;
+                let allowed_status = allowed_status.clone();
+                route.query(move |route: Text| {
+                    let req = match method {
+                        NetworkMethod::Get => {
+                            // TODO: check if json is set even if it shouldn't
+                            NetworkRequest::new_get(server, route).query(Machine::from_final)
+                        }
+                        NetworkMethod::Post => {
+                            if let Some(reversed_json) = reversed_json {
+                                eval_post_request(server, route, reversed_json, vec![])
+                            } else {
+                                NetworkRequest::new_post(server, route, None)
+                                    .query(Machine::from_final)
+                            }
+                        }
+                    };
+                    req.and_then(|resp: NetworkResponse| {
+                        if allowed_status.is_some_and(|allowed| !allowed.contains(resp.status())) {
+                            return cerr::network_statusDisallowed.into();
+                        }
+                        RuntimeValue::Mapping(resp.into()).into()
+                    })
+                })
+            }
             _ => todo!(),
         }
+    }
+}
+
+fn eval_post_request(
+    server: Text,
+    route: Text,
+    mut reversed_json: Vec<(ValueReference, ValueReference)>,
+    mut final_json: Vec<(Text, RuntimeValue)>,
+) -> Machine<NetworkResponse> {
+    if let Some((k, v)) = reversed_json.pop() {
+        (&k, &v).query_n(|k: Text, v: RuntimeValue| {
+            final_json.push((k, v));
+            eval_post_request(server, route, reversed_json, final_json)
+        })
+    } else {
+        NetworkRequest::new_post(server, route, Some(final_json)).query(Machine::from_final)
+    }
+}
+
+fn eval_mapitem(
+    current: RuntimeValue,
+    mut reversed_keys: Vec<ValueReference>,
+) -> Machine<RuntimeValue> {
+    if let Some(key) = reversed_keys.pop() {
+        key.query(|key: MapKey| match current {
+            RuntimeValue::Mapping(mapping) => {
+                if let Some(next) = mapping.get(&key).cloned() {
+                    eval_mapitem(next, reversed_keys)
+                } else {
+                    cerr::mapping_missingKey.into()
+                }
+            }
+            _ => cerr::typing_notMapping.into(),
+        })
+    } else {
+        Machine::from_final(current)
     }
 }
 

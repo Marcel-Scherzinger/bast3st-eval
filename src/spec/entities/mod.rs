@@ -37,6 +37,12 @@ pub enum MessageSeverity {
     Warning,
     Info,
 }
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Copy)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum NetworkMethod {
+    Get,
+    Post,
+}
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]

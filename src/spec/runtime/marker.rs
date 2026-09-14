@@ -5,7 +5,11 @@ use crate::{
     spec::{
         ActionEntity, CriterionEntity, Entity, EntityId, MapKey, Numeric, PrimitiveValue, Text,
         ValueReference,
-        runtime::{Array, Mapping, RuntimeAction, RuntimeCriterion, RuntimeValue, Selector},
+        machine::Machine,
+        runtime::{
+            Array, Mapping, NetworkRequest, NetworkResponse, RuntimeAction, RuntimeCriterion,
+            RuntimeValue, Selector,
+        },
     },
 };
 
@@ -27,6 +31,15 @@ mod _sealed {
 pub(crate) use _sealed::{CheapBorrowFromAny, PossibleRuntimeValue, SpecializeFrom};
 use scratch_test_value::SNumber;
 pub trait MachineReturnVal {}
+
+pub trait ClarifiedCerrMerging {
+    fn maybe_merge(m: Machine<Self>) -> Machine<Self>
+    where
+        Self: Sized,
+    {
+        m
+    }
+}
 
 macro_rules! impl_specialize {
     ($ty: ty, $err: expr, $t: pat, $o: ident) => {
@@ -122,7 +135,8 @@ impl_possible!(ValueReference:
     //
     RuntimeValue, PrimitiveValue, Array, Mapping, Text, Numeric, MapKey
 );
-impl_possible!(Selector: RuntimeValue, Array, Mapping);
+impl_possible!(Selector: RuntimeValue, Array, Mapping, NetworkResponse);
+impl_possible!(NetworkRequest: NetworkResponse);
 
 impl_marker!(
     CheapBorrowFromAny:
@@ -137,6 +151,19 @@ impl_marker!(
     SNumber
 );
 impl_marker!(MachineReturnVal: RuntimeAction, RuntimeCriterion, RuntimeValue);
+
+// ClarifiedCerrMerging
+impl_marker!(ClarifiedCerrMerging: RuntimeAction, RuntimeCriterion, RuntimeValue,
+    PrimitiveValue, Array, Mapping, Text, SNumber, NetworkResponse);
+
+impl ClarifiedCerrMerging for RuntimeAny {
+    fn maybe_merge(m: Machine<Self>) -> Machine<Self>
+    where
+        Self: Sized,
+    {
+        m.merge_catchables()
+    }
+}
 
 impl SpecializeFrom<Text> for PrimitiveValue {
     fn specialize_from<'a>(any: &'a Text) -> Result<Cow<'a, Self>, cerr>

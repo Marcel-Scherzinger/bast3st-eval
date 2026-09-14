@@ -1,10 +1,15 @@
 use std::{collections::BTreeMap, sync::Arc};
 mod marker;
+mod network;
 mod selector;
 
 use derive_more::{Deref, From};
 pub use marker::MachineReturnVal;
-pub(super) use marker::{CheapBorrowFromAny, PossibleRuntimeValue, SpecializeFrom};
+pub(super) use marker::{
+    CheapBorrowFromAny, ClarifiedCerrMerging, PossibleRuntimeValue, SpecializeFrom,
+};
+pub use network::{InnerNetworkRequest, NetworkRequest, NetworkResponse};
+pub use selector::SelectableTaskRequest;
 pub use selector::Selector;
 
 use crate::{
@@ -12,7 +17,7 @@ use crate::{
     spec::{EntityId, MapKey, PrimitiveValue},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, From)]
 pub enum RuntimeAny {
     Criterion(RuntimeCriterion),
     Action(RuntimeAction),
@@ -25,9 +30,9 @@ pub struct RuntimeCriterion(pub(super) bool);
 #[derive(Debug, Clone, Hash)]
 pub struct RuntimeAction;
 
-#[derive(Debug, Clone, Deref)]
+#[derive(Debug, Clone, Deref, PartialEq, PartialOrd)]
 pub struct Array(Arc<[RuntimeValue]>);
-#[derive(Debug, Clone, Deref)]
+#[derive(Debug, Clone, Deref, PartialEq, PartialOrd)]
 pub struct Mapping(Arc<BTreeMap<MapKey, RuntimeValue>>);
 
 impl<P: Into<RuntimeValue>> FromIterator<P> for Array {
@@ -36,7 +41,7 @@ impl<P: Into<RuntimeValue>> FromIterator<P> for Array {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum RuntimeValue {
     Prim(PrimitiveValue),
     Array(Array),
