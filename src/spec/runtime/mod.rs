@@ -2,6 +2,7 @@ use std::{collections::BTreeMap, sync::Arc};
 mod marker;
 mod network;
 mod selector;
+mod tasks;
 
 use derive_more::{Deref, From};
 pub use marker::MachineReturnVal;
@@ -10,7 +11,7 @@ pub(super) use marker::{
 };
 pub use network::{InnerNetworkRequest, NetworkRequest, NetworkResponse};
 pub use selector::Selector;
-pub use selector::{CompiledRegex, SelectableTaskRequest, SpecificTaskRequest};
+pub use tasks::{CompiledRegex, SpecificTaskRequest};
 
 use crate::spec::Numeric;
 use crate::spec::Text;

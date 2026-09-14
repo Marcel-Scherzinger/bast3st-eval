@@ -15,7 +15,7 @@ use crate::{
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub struct TaskResultId(u64);
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub enum Selector {
     Input,
     Output,
@@ -25,25 +25,6 @@ pub enum Selector {
     Blockcount,
     Param,
     Flags,
-    TaskResult(TaskResultId),
-}
-
-#[derive(Debug, PartialEq, PartialOrd, Clone, derive_more::From)]
-pub enum SelectableTaskRequest {
-    NetworkRequest(NetworkRequest),
-    CompiledRegex(CompiledRegex),
-}
-
-pub trait SpecificTaskRequest {
-    type MainOutput: Clone;
-}
-impl SpecificTaskRequest for NetworkRequest {
-    type MainOutput = NetworkResponse;
-}
-#[derive(Debug, PartialEq, PartialOrd, Clone, derive_more::From)]
-pub struct CompiledRegex(Text);
-impl SpecificTaskRequest for CompiledRegex {
-    type MainOutput = regex::Regex;
 }
 
 impl Selector {

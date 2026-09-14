@@ -5,19 +5,19 @@ use crate::spec::{
     machine::{Machine, MissingValue, OnTask, Param, cast_param},
     runtime::{
         CheapBorrowFromAny, ClarifiedCerrMerging, CompiledRegex, NetworkRequest,
-        PossibleRuntimeValue, RuntimeAny, RuntimeValue, SelectableTaskRequest, Selector,
-        SpecializeFrom, SpecificTaskRequest,
+        PossibleRuntimeValue, RuntimeAny, RuntimeValue, Selector, SpecializeFrom,
+        SpecificTaskRequest,
     },
 };
 
-pub trait MachineConstruction<E, RuntimeT> {
+pub trait MachineConstruction<E, RuntimeT>: Sized {
     fn query_cow<R: ClarifiedCerrMerging + 'static>(
-        &self,
+        self,
         closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
     ) -> Machine<R>;
 
     fn query<R: ClarifiedCerrMerging + 'static>(
-        &self,
+        self,
         closure: impl for<'a> FnOnce(RuntimeT) -> Machine<R> + 'static,
     ) -> Machine<R>
     where
@@ -27,7 +27,7 @@ pub trait MachineConstruction<E, RuntimeT> {
     }
 
     fn query_ref<R: ClarifiedCerrMerging + 'static>(
-        &self,
+        self,
         closure: impl for<'a> FnOnce(&'a RuntimeT) -> Machine<R> + 'static,
     ) -> Machine<R>
     where
@@ -44,7 +44,7 @@ where
     Entity: From<E>,
 {
     fn query_cow<R: ClarifiedCerrMerging + 'static>(
-        &self,
+        self,
         closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
     ) -> Machine<R> {
         let id: EntityId<Entity> = self.cast_id();
@@ -57,11 +57,11 @@ where
 impl<RuntimeT> MachineConstruction<ValueReference, RuntimeT> for ValueReference
 where
     ValueReference: PossibleRuntimeValue<RuntimeT>,
-    RuntimeT: Clone + SpecializeFrom + /*SpecializeFrom<Text> +*/ 'static,
+    RuntimeT: Clone + SpecializeFrom + 'static,
     EntityId<Entity>: PossibleRuntimeValue<RuntimeT>,
 {
     fn query_cow<R: ClarifiedCerrMerging + 'static>(
-        &self,
+        self,
         closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
     ) -> Machine<R> {
         match self {
@@ -81,6 +81,19 @@ where
         }
     }
 }
+impl<RuntimeT> MachineConstruction<ValueReference, RuntimeT> for &ValueReference
+where
+    ValueReference: PossibleRuntimeValue<RuntimeT>,
+    RuntimeT: Clone + SpecializeFrom + 'static,
+    EntityId<Entity>: PossibleRuntimeValue<RuntimeT>,
+{
+    fn query_cow<R: ClarifiedCerrMerging + 'static>(
+        self,
+        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
+    ) -> Machine<R> {
+        self.clone().query_cow(closure)
+    }
+}
 
 impl<RuntimeT> MachineConstruction<Selector, RuntimeT> for Selector
 where
@@ -88,12 +101,11 @@ where
     RuntimeT: SpecializeFrom,
 {
     fn query_cow<R: ClarifiedCerrMerging + 'static>(
-        &self,
+        self,
         closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
     ) -> Machine<R> {
-        let id = self.clone();
         let on_push = move |param: Param<'_>| Machine::from_res(cast_param(param).map(closure));
-        Machine::from_pushable(self.clone(), Box::new(on_push))
+        Machine::from_pushable(self, Box::new(on_push))
     }
 }
 
@@ -105,7 +117,7 @@ macro_rules! impl_task_queries {
             <$task as SpecificTaskRequest>::MainOutput: Clone,
         {
             fn query_cow<R: ClarifiedCerrMerging + 'static>(
-                &self,
+                self,
                 closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
             ) -> Machine<R> {
                 Machine::from_task(
