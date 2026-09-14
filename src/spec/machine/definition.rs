@@ -252,3 +252,8 @@ impl<R: ClarifiedCerrMerging + 'static> From<Result<Machine<R>, cerr>> for Machi
         Self::from_res(value.map_err(Either::Left))
     }
 }
+impl<R: ClarifiedCerrMerging + 'static> From<Result<R, cerr>> for Machine<R> {
+    fn from(value: Result<R, cerr>) -> Self {
+        Self::from_res(value.map_err(Either::Left).map(Machine::from_final))
+    }
+}

@@ -16,6 +16,12 @@ use crate::{
 };
 pub type MappingReference = ValueReference;
 
+#[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize, Clone)]
+pub enum RegexCaptureGroup {
+    Numeric(usize),
+    Named(Text),
+}
+
 #[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "kebab-case")]
 pub enum ValueEntity {
@@ -125,6 +131,7 @@ pub enum ValueEntity {
         #[serde(rename = "p")]
         pattern: ValueReference,
         sup: ValueReference,
+        group: Option<RegexCaptureGroup>,
     },
     Catch {
         #[serde(rename = "v")]
@@ -348,9 +355,42 @@ impl ValueEntity {
                 let length = length.try_into().unwrap_or(i64::MAX);
                 RuntimeValue::Prim(PrimitiveValue::Number(SNumber::Int(length))).into()
             }),
-            Self::FirstCaptureOfRegex { pattern, sup } => {
+            Self::FirstCaptureOfRegex {
+                pattern,
+                sup,
+                group,
+            } => {
+                let group = group.clone();
+                let process_capture = |capture: regex::Captures<'_>| {
+                    match group {
+                        None => capture.get(0),
+                        Some(RegexCaptureGroup::Named(name)) => capture.name(&name),
+                        Some(RegexCaptureGroup::Numeric(group)) => capture.get(group),
+                    }
+                    .map(|mat| RuntimeValue::from(Text::from(mat.as_str())))
+                    .ok_or(cerr::regex_noGroup)
+                };
                 (pattern, sup).query_n(|pattern: Text, sup: RuntimeValue| {
-                    CompiledRegex::from(pattern).query(|pattern: regex::Regex| todo!())
+                    CompiledRegex::from(pattern).query(|pattern: regex::Regex| match sup {
+                        RuntimeValue::Mapping(_)
+                        | RuntimeValue::Prim(PrimitiveValue::Number(_) | PrimitiveValue::Bool(_)) =>
+                        {
+                             cerr::regex_invalidHaystack.into()
+                        }
+                        RuntimeValue::Array(array) => {
+                            for item in array.iter() {
+                                if let RuntimeValue::Prim(PrimitiveValue::Str(text)) = item && let Some(capture) = pattern.captures(text){
+                                    return process_capture(capture).into();
+                                }
+                            }
+                            Machine::from(cerr::regex_noMatch)
+
+                        }
+                        RuntimeValue::Prim(PrimitiveValue::Str(text)) => {
+                            let capture = pattern.captures(&text).ok_or(cerr::regex_noMatch);
+                             Machine::from(capture.and_then(process_capture))
+                        }
+                    })
                 })
             }
         }

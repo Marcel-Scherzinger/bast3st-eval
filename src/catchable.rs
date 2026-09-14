@@ -31,6 +31,8 @@ impl cerr {
     pub const typing_notMapkey: cerr = cerr::any;
     pub const typing_notNetworkResp: cerr = cerr::any;
     pub const typing_notIterable: cerr = cerr::any;
+    pub const regex_noGroup: cerr = cerr::any;
+    pub const regex_invalidHaystack: cerr = cerr::any;
 }
 
 /*
