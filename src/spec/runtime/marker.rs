@@ -3,7 +3,7 @@ use std::{borrow::Cow, sync::Arc};
 use crate::{
     catchable::cerr,
     spec::{
-        ActionEntity, CriterionEntity, Entity, EntityId, Numeric, PrimitiveValue, Text,
+        ActionEntity, CriterionEntity, Entity, EntityId, MapKey, Numeric, PrimitiveValue, Text,
         ValueReference,
         runtime::{Array, Mapping, RuntimeAction, RuntimeCriterion, RuntimeValue, Selector},
     },
@@ -112,14 +112,15 @@ impl_possible!(EntityId<Entity>:
     RuntimeCriterion,
     //
     RuntimeValue, PrimitiveValue, Array, Mapping,
-    Text, Numeric
+    Text, Numeric, MapKey
 );
 impl_possible!(EntityId<ActionEntity>: RuntimeAction, );
 impl_possible!(EntityId<CriterionEntity>: RuntimeCriterion, );
 
 impl_possible!(ValueReference:
+    RuntimeAny,
     //
-    RuntimeValue, PrimitiveValue, Array, Mapping, Text, Numeric
+    RuntimeValue, PrimitiveValue, Array, Mapping, Text, Numeric, MapKey
 );
 impl_possible!(Selector: RuntimeValue, Array, Mapping);
 
@@ -165,6 +166,30 @@ impl SpecializeFrom<RuntimeValue> for Mapping {
         match any {
             RuntimeValue::Mapping(a) => Ok(Cow::Borrowed(a)),
             _ => Err(cerr::typing_notMapping),
+        }
+    }
+}
+impl SpecializeFrom for MapKey {
+    fn specialize_from<'a>(any: &'a RuntimeAny) -> Result<Cow<'a, Self>, cerr>
+    where
+        Self: Sized,
+    {
+        match any {
+            RuntimeAny::Value(RuntimeValue::Prim(p)) => MapKey::specialize_from(p),
+            _ => Err(cerr::typing_notMapkey),
+        }
+    }
+}
+impl SpecializeFrom<PrimitiveValue> for MapKey {
+    fn specialize_from<'a>(any: &'a PrimitiveValue) -> Result<Cow<'a, Self>, cerr>
+    where
+        Self: Sized,
+    {
+        match any {
+            PrimitiveValue::Str(s) => Ok(Cow::Owned(Self::Str(s.clone()))),
+            PrimitiveValue::Bool(b) => Ok(Cow::Owned(Self::Bool(*b))),
+            PrimitiveValue::Number(Numeric::Int(i)) => Ok(Cow::Owned(Self::Int(*i))),
+            _ => Err(cerr::typing_notMapkey),
         }
     }
 }

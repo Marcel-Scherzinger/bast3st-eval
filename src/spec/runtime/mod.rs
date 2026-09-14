@@ -9,7 +9,7 @@ pub use selector::Selector;
 
 use crate::{
     catchable::cerr,
-    spec::{EntityId, PrimitiveValue},
+    spec::{EntityId, MapKey, PrimitiveValue},
 };
 
 #[derive(Debug, Clone)]
@@ -28,7 +28,7 @@ pub struct RuntimeAction;
 #[derive(Debug, Clone, Deref)]
 pub struct Array(Arc<[RuntimeValue]>);
 #[derive(Debug, Clone, Deref)]
-pub struct Mapping(Arc<BTreeMap<PrimitiveValue, RuntimeValue>>);
+pub struct Mapping(Arc<BTreeMap<MapKey, RuntimeValue>>);
 
 impl<P: Into<RuntimeValue>> FromIterator<P> for Array {
     fn from_iter<T: IntoIterator<Item = P>>(iter: T) -> Self {

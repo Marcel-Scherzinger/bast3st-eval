@@ -1,5 +1,5 @@
 use crate::spec::{
-    MachineConstruction,
+    MachineConstruction, Text,
     machine::Machine,
     runtime::{PossibleRuntimeValue, RuntimeAny, RuntimeValue, SpecializeFrom},
 };
