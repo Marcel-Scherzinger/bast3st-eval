@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::BTreeMap, hash::Hash, sync::Arc};
 
 use either::Either;
 
-use crate::spec::runtime::*;
+use crate::spec::{RuntimeAction, runtime::*};
 use crate::{
     catchable::cerr,
     spec::{

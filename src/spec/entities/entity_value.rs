@@ -1,3 +1,4 @@
+use either::Either;
 use scratch_test_value::SNumber;
 use serde::{Deserialize, Serialize};
 
@@ -5,22 +6,16 @@ use crate::{
     catchable::cerr,
     spec::{
         ActionEntity, CriterionEntity, EntityId, MapKey, NetworkMethod, Numeric, PrimitiveValue,
-        Text, ValueReference,
+        RuntimeAction, Text, ValueReference,
         entities::eval_if_then_else,
         machine::{Machine, MachineConstruction, MachineConstructionN},
         runtime::{
-            Array, CompiledRegex, Mapping, NetworkRequest, NetworkResponse, RuntimeAction,
-            RuntimeAny, RuntimeCriterion, RuntimeValue, Selector,
+            Array, CompiledRegex, Mapping, NetworkRequest, NetworkResponse, RuntimeAny,
+            RuntimeCriterion, RuntimeValue, Selector,
         },
     },
 };
 pub type MappingReference = ValueReference;
-
-#[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize, Clone)]
-pub enum RegexCaptureGroup {
-    Numeric(usize),
-    Named(Text),
-}
 
 #[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
 #[serde(tag = "op", rename_all = "kebab-case")]
@@ -131,7 +126,7 @@ pub enum ValueEntity {
         #[serde(rename = "p")]
         pattern: ValueReference,
         sup: ValueReference,
-        group: Option<RegexCaptureGroup>,
+        group: Option<ValueReference>,
     },
     Catch {
         #[serde(rename = "v")]
@@ -303,17 +298,24 @@ impl ValueEntity {
                 group,
             } => {
                 let group = group.clone();
-                let process_capture = |capture: regex::Captures<'_>| {
+
+                let process_capture_group = move |capture: regex::Captures<'_>, group| {
                     match group {
-                        None => capture.get(0),
-                        Some(RegexCaptureGroup::Named(name)) => capture.name(&name),
-                        Some(RegexCaptureGroup::Numeric(group)) => capture.get(group),
+                        PrimitiveValue::Number(SNumber::Int(group))
+                            if let Ok(group) = group.try_into() =>
+                        {
+                            capture.get(group)
+                        }
+                        PrimitiveValue::Str(name) => capture.name(&name),
+                        _ => return cerr::regex_noGroup.into(),
                     }
                     .map(|mat| RuntimeValue::from(Text::from(mat.as_str())))
                     .ok_or(cerr::regex_noGroup)
+                    .into()
                 };
-                (pattern, sup).query_n(|pattern: Text, sup: RuntimeValue| {
-                    CompiledRegex::from(pattern).query(|pattern: regex::Regex| match sup {
+
+                let do_for_group = move |pattern, sup, group: PrimitiveValue| {
+                    CompiledRegex::from(pattern).query(move |pattern: regex::Regex| match sup {
                         RuntimeValue::Mapping(_)
                         | RuntimeValue::Prim(PrimitiveValue::Number(_) | PrimitiveValue::Bool(_)) =>
                         {
@@ -322,7 +324,7 @@ impl ValueEntity {
                         RuntimeValue::Array(array) => {
                             for item in array.iter() {
                                 if let RuntimeValue::Prim(PrimitiveValue::Str(text)) = item && let Some(capture) = pattern.captures(text){
-                                    return process_capture(capture).into();
+                                    return process_capture_group(capture, group);
                                 }
                             }
                             Machine::from(cerr::regex_noMatch)
@@ -330,9 +332,17 @@ impl ValueEntity {
                         }
                         RuntimeValue::Prim(PrimitiveValue::Str(text)) => {
                             let capture = pattern.captures(&text).ok_or(cerr::regex_noMatch);
-                             Machine::from(capture.and_then(process_capture))
+                            capture.map(|c| process_capture_group(c, group)).into()
                         }
                     })
+                };
+
+                (pattern, sup).query_n(move |pattern: Text, sup: RuntimeValue| {
+                    if let Some(group) = group {
+                        group.query(move |group: PrimitiveValue| do_for_group(pattern, sup, group))
+                    } else {
+                        do_for_group(pattern, sup, PrimitiveValue::Number(Numeric::Int(0)))
+                    }
                 })
             }
         }

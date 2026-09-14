@@ -30,7 +30,7 @@ pub enum ValueReference {
     EntityId(EntityId<ValueEntity>),
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
 pub enum MessageSeverity {
     Error,
@@ -44,19 +44,19 @@ pub enum NetworkMethod {
     Post,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
 pub enum EndThisTestMode {
     Pass,
     Fail,
 }
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "kebab-case")]
 pub enum SetFlagMode {
     Keep,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
 pub enum MessageSendingLevel {
     Spec,

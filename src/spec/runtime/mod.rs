@@ -4,6 +4,7 @@ mod network;
 mod selector;
 mod tasks;
 
+pub use crate::spec::RuntimeAction;
 use derive_more::{Deref, From};
 pub use marker::MachineReturnVal;
 pub(super) use marker::{
@@ -33,8 +34,6 @@ pub struct RuntimeCriterion {
     is_fulfilled: bool,
     failure_explaination: Option<Text>,
 }
-#[derive(Debug, Clone, Hash)]
-pub struct RuntimeAction;
 
 impl RuntimeCriterion {
     pub fn new(is_fulfilled: bool, failure_explaination: Option<Text>) -> Self {

@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::spec::{
-    CriterionEntity, EndThisTestMode, EntityId, MessageSendingLevel, MessageSeverity, SetFlagMode,
-    ValueReference,
+    CriterionEntity, EndThisTestMode, EntityId, MachineConstruction, MachineConstructionN, MapKey,
+    MessageSendingLevel, MessageSeverity, PrimitiveValue, SetFlagMode, Text, ValueReference,
+    machine::Machine, runtime::RuntimeCriterion,
 };
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -20,7 +21,7 @@ pub enum ActionEntity {
         #[serde(rename = "m")]
         mode: EndThisTestMode,
         #[serde(rename = "e")]
-        explaination: String,
+        explaination: ValueReference,
     },
 
     SetFlag {
@@ -39,5 +40,74 @@ pub enum ActionEntity {
         then_: EntityId<ActionEntity>,
         #[serde(rename = "e")]
         else_: EntityId<ActionEntity>,
+    },
+}
+impl ActionEntity {
+    pub fn machine(&self) -> Machine<RuntimeAction> {
+        match self {
+            Self::SendMsg {
+                text,
+                severity,
+                level,
+            } => {
+                let severity = *severity;
+                let level = *level;
+                text.query(move |text: PrimitiveValue| {
+                    RuntimeAction::SendMsg {
+                        text: text.into_text(),
+                        severity,
+                        level,
+                    }
+                    .into()
+                })
+            }
+            Self::EndThisTest { mode, explaination } => {
+                let mode = *mode;
+                explaination.query(move |explaination: PrimitiveValue| {
+                    RuntimeAction::EndThisTest {
+                        mode,
+                        explaination: explaination.into_text(),
+                    }
+                    .into()
+                })
+            }
+            Self::IfThenElse { if_, then_, else_ } => {
+                let (then_, else_) = (*then_, *else_);
+                if_.query(move |if_: RuntimeCriterion| {
+                    if if_.is_fulfilled() { then_ } else { else_ }
+                        .query(|branch: RuntimeAction| branch.into())
+                })
+            }
+            Self::SetFlag { mode, key, value } => {
+                let mode = mode.clone();
+                (key, value).query_n(move |key: MapKey, value: PrimitiveValue| {
+                    RuntimeAction::SetFlag {
+                        mode,
+                        key: key.into_text(),
+                        value,
+                    }
+                    .into()
+                })
+            }
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
+pub enum RuntimeAction {
+    SendMsg {
+        text: Text,
+        severity: MessageSeverity,
+        level: Option<MessageSendingLevel>,
+    },
+    EndThisTest {
+        mode: EndThisTestMode,
+        explaination: Text,
+    },
+
+    SetFlag {
+        mode: SetFlagMode,
+        key: Text,
+        value: PrimitiveValue,
     },
 }

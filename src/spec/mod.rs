@@ -26,6 +26,17 @@ pub enum PrimitiveValue {
     Number(Numeric),
     Bool(bool),
 }
+
+impl PrimitiveValue {
+    pub fn into_text(self) -> Text {
+        match self {
+            Self::Str(t) => t,
+            Self::Number(n) => n.to_string().into(),
+            Self::Bool(b) => b.to_string().into(),
+        }
+    }
+}
+
 pub type Numeric = scratch_test_value::SNumber;
 
 #[derive(
@@ -72,6 +83,16 @@ pub enum MapKey {
     Int(i64),
     Bool(bool),
 }
+impl MapKey {
+    pub fn into_text(self) -> Text {
+        match self {
+            Self::Str(t) => t,
+            Self::Int(i) => i.to_string().into(),
+            Self::Bool(b) => b.to_string().into(),
+        }
+    }
+}
+
 impl From<MapKey> for PrimitiveValue {
     fn from(value: MapKey) -> Self {
         match value {
