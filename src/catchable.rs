@@ -1,10 +1,5 @@
 mod generated;
 
-use std::borrow::Cow;
-
-use bitflags::Flags;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-
 /// See [`bast3st-py.catchable.err`](https://marcel-scherzinger.github.io/bast3st-py/ref_caterr.html#bast3st.catchable.err)
 #[allow(non_camel_case_types)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]

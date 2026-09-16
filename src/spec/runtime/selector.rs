@@ -1,19 +1,8 @@
-use std::sync::Arc;
-
-use crate::{
-    catchable::cerr,
-    spec::{
-        MachineConstruction, Text,
-        machine::Machine,
-        runtime::{
-            NetworkResponse, PossibleRuntimeValue, RuntimeAny, RuntimeValue, SpecializeFrom,
-            network::NetworkRequest,
-        },
-    },
+use crate::spec::{
+    MachineConstruction,
+    machine::Machine,
+    runtime::{PossibleRuntimeValue, RuntimeValue, SpecializeFrom},
 };
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
-pub struct TaskResultId(u64);
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
 pub enum Selector {

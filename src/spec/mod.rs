@@ -5,18 +5,15 @@ mod machine;
 mod runtime;
 mod structure;
 
-use runtime::Selector;
-use std::{cmp::Ordering, collections::BTreeMap, sync::Arc};
+use std::{cmp::Ordering, sync::Arc};
 
-use derive_more::{Deref, From, Into};
-use either::Either;
+use derive_more::{Deref, From};
 use serde::{Deserialize, Serialize};
-
-use crate::catchable::cerr;
 
 pub use entities::*;
 pub use hooks::*;
 pub use machine::{MachineConstruction, MachineConstructionN};
+pub use runtime::*;
 pub use structure::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone, From)]

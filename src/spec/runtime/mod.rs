@@ -17,10 +17,9 @@ pub use selector::Selector;
 pub use tasks::{CompiledRegex, SpecificTaskRequest};
 
 use crate::spec::Numeric;
-use crate::spec::Text;
 use crate::{
     catchable::cerr,
-    spec::{EntityId, MapKey, PrimitiveValue},
+    spec::{MapKey, PrimitiveValue},
 };
 
 #[derive(Debug, Clone, From)]

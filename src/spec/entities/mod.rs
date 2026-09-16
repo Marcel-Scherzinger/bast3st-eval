@@ -3,12 +3,10 @@ mod entity_criterion;
 mod entity_id;
 mod entity_value;
 
-use std::sync::Arc;
-
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 
-use crate::{catchable::cerr, spec::Text};
+use crate::spec::Text;
 
 pub use entity_action::*;
 pub use entity_criterion::*;

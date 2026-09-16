@@ -1,4 +1,3 @@
-use either::Either;
 use scratch_test_value::SNumber;
 use serde::{Deserialize, Serialize};
 
@@ -7,7 +6,6 @@ use crate::{
     spec::{
         ActionEntity, CriterionEntity, EntityId, MapKey, NetworkMethod, Numeric, PrimitiveValue,
         RuntimeAction, Text, ValueReference,
-        entities::eval_if_then_else,
         machine::{Machine, MachineConstruction, MachineConstructionN},
         runtime::{
             Array, ClarifiedCerrMerging, CompiledRegex, Mapping, NetworkRequest, NetworkResponse,

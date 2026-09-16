@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::Arc};
+use std::borrow::Cow;
 
 use crate::{
     catchable::cerr,
@@ -164,6 +164,15 @@ impl_marker!(ClarifiedCerrMerging: RuntimeAction, RuntimeCriterion, RuntimeValue
     PrimitiveValue, Array, Mapping, Text, SNumber, NetworkResponse, bool);
 
 impl ClarifiedCerrMerging for RuntimeAny {
+    fn maybe_merge(m: Machine<Self>) -> Machine<Self>
+    where
+        Self: Sized,
+    {
+        m.merge_catchables()
+    }
+}
+
+impl ClarifiedCerrMerging for cerr {
     fn maybe_merge(m: Machine<Self>) -> Machine<Self>
     where
         Self: Sized,

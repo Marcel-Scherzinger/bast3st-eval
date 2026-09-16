@@ -1,17 +1,16 @@
-use std::{borrow::Cow, collections::BTreeMap, fmt::Debug};
+use std::fmt::Debug;
 
-use scratch_test_value::SNumber;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     catchable::cerr,
     spec::{
-        ActionEntity, Entity, EntityId, MachineConstruction, MachineConstructionN, Numeric,
-        PrimitiveValue, RuntimeAction, Text, ValueReference,
+        ActionEntity, EntityId, MachineConstruction, MachineConstructionN, Numeric, PrimitiveValue,
+        RuntimeAction, Text, ValueReference,
         machine::Machine,
         runtime::{
-            ClarifiedCerrMerging, CompiledRegex, InnerRuntimeCriterion, MaybeEval,
-            PossibleRuntimeValue, RuntimeAny, RuntimeCriterion, RuntimeValue, SpecializeFrom,
+            CompiledRegex, InnerRuntimeCriterion, MaybeEval, RuntimeAny, RuntimeCriterion,
+            RuntimeValue,
         },
     },
 };
@@ -489,7 +488,7 @@ fn eval_containtext(
 fn eval_comparison(
     left: &ValueReference,
     right: &ValueReference,
-    mut failure_explaination: Option<ValueReference>,
+    failure_explaination: Option<ValueReference>,
     satisfied_cons: impl FnOnce(PrimitiveValue, PrimitiveValue) -> (bool, InnerRuntimeCriterion)
     + 'static,
 ) -> Machine<RuntimeCriterion> {

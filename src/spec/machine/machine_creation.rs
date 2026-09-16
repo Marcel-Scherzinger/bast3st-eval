@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use crate::spec::{
     Entity, EntityId, PrimitiveValue, ValueReference,
-    machine::{Machine, MissingValue, OnTask, Param, cast_param},
+    machine::{Machine, MissingValue, Param, cast_param},
     runtime::{
         CheapBorrowFromAny, ClarifiedCerrMerging, CompiledRegex, NetworkRequest,
         PossibleRuntimeValue, RuntimeAny, RuntimeValue, Selector, SpecializeFrom,

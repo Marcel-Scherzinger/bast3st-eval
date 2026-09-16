@@ -1,66 +1,27 @@
-use std::{borrow::Cow, collections::BTreeMap, hash::Hash, sync::Arc};
+use std::borrow::Cow;
 
 use either::Either;
 
+use crate::spec::machine::definition::TaskPushable;
+use crate::spec::machine::{
+    FatalError, Finished, MachineWith, MachineWithTask, OnTask, Param, Pushable, UnfinishedMachine,
+};
 use crate::spec::{RuntimeAction, runtime::*};
 use crate::{
     catchable::cerr,
-    spec::{
-        ActionEntity, CriterionEntity, Entity, EntityId, PrimitiveValue, Text, ValueEntity,
-        ValueReference, runtime::ClarifiedCerrMerging,
-    },
+    spec::{Entity, EntityId, runtime::ClarifiedCerrMerging},
 };
-
-pub type AllRuntimeValues = BTreeMap<EntityId<Entity>, RuntimeAny>;
-
-pub type Param<'a> = Result<&'a RuntimeAny, FatalError>;
-
-pub type Pushable<R> = Box<dyn for<'a> FnOnce(Param<'a>) -> Machine<R>>;
-type TaskPushable<T, R> =
-    Box<dyn for<'a> FnOnce(Cow<'a, <T as SpecificTaskRequest>::MainOutput>) -> Machine<R>>;
-
-enum InnerMachine<R> {
+pub(super) enum InnerMachine<R> {
     Final(R),
     Pushable(MissingValue, Pushable<R>),
     OnTask(OnTask<R>),
     Catchable(cerr),
 }
-#[derive(derive_more::From)]
-pub enum OnTask<R> {
-    NetworkRequest((NetworkRequest, TaskPushable<NetworkRequest, R>)),
-    CompiledRegex((CompiledRegex, TaskPushable<CompiledRegex, R>)),
-}
 
-impl<R: ClarifiedCerrMerging + 'static> OnTask<R> {
-    pub fn map<U>(self, closure: impl FnOnce(R) -> U + 'static) -> OnTask<U> {
-        match self {
-            Self::CompiledRegex((req, inner)) => {
-                OnTask::CompiledRegex((req, Box::new(move |val| inner(val).map(closure))))
-            }
-            Self::NetworkRequest((req, inner)) => {
-                OnTask::NetworkRequest((req, Box::new(move |val| inner(val).map(closure))))
-            }
-        }
-    }
-    pub fn and_then<U>(self, closure: impl FnOnce(R) -> Machine<U> + 'static) -> OnTask<U> {
-        match self {
-            Self::CompiledRegex((req, inner)) => {
-                OnTask::CompiledRegex((req, Box::new(move |val| inner(val).and_then(closure))))
-            }
-            Self::NetworkRequest((req, inner)) => {
-                OnTask::NetworkRequest((req, Box::new(move |val| inner(val).and_then(closure))))
-            }
-        }
-    }
-}
-
-pub enum FatalError {
-    DeliveredValueStillMissing(EntityId<Entity>),
-}
 /// value that is missing and needs to be computed first before this
 /// machine can continue
-#[derive(Debug, derive_more::From)]
-pub(super) enum MissingValue {
+#[derive(Debug, derive_more::From, PartialEq, PartialOrd, Clone)]
+pub enum MissingValue {
     EntityId(EntityId<Entity>),
     Selector(Selector),
     /// The stored closure doesn't require any value at all and it is expected to *not*
@@ -69,11 +30,63 @@ pub(super) enum MissingValue {
     NoValueNeeded,
 }
 
+#[derive(derive_more::Debug)]
+#[debug("Machine {{ dependencies: {dependencies:?}, actions: {actions:?}, ...}}")]
 pub struct Machine<R> {
     /// other nodes whose value changes will affect the value of this computation
-    dependencies: Vec<EntityId<Entity>>,
-    inner: Result<InnerMachine<R>, FatalError>,
-    actions: Vec<RuntimeAction>,
+    pub(super) dependencies: Vec<EntityId<Entity>>,
+    pub(super) inner: Result<InnerMachine<R>, FatalError>,
+    pub(super) actions: Vec<RuntimeAction>,
+}
+impl<R> Machine<R> {
+    pub(super) fn continued_from(
+        mut self,
+        dependencies: Vec<EntityId<Entity>>,
+        actions: Vec<RuntimeAction>,
+    ) -> Machine<R> {
+        self.dependencies.extend(dependencies);
+        self.actions.extend(actions);
+        self
+    }
+}
+
+impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
+    pub fn big_red_and_btn(self) -> Either<Finished<R>, UnfinishedMachine<R>> {
+        match self.inner {
+            Ok(InnerMachine::Final(val)) => {
+                Either::Left(Ok(Ok((val, (self.dependencies, self.actions)))))
+            }
+            Ok(InnerMachine::Pushable(_, _)) => {
+                Either::Right(UnfinishedMachine::Missing(MachineWith::new(self)))
+            }
+            Ok(InnerMachine::OnTask(task)) => Either::Right(match task {
+                OnTask::CompiledRegex((task, closure)) => {
+                    UnfinishedMachine::RegexTask(MachineWithTask::into_task_specific(
+                        self.dependencies,
+                        self.actions,
+                        task,
+                        closure,
+                    ))
+                }
+                OnTask::NetworkRequest((task, closure)) => {
+                    UnfinishedMachine::NetworkTask(MachineWithTask::into_task_specific(
+                        self.dependencies,
+                        self.actions,
+                        task,
+                        closure,
+                    ))
+                }
+            }),
+            Ok(InnerMachine::Catchable(err)) => Either::Left(Ok(Err(err))),
+            Err(fatal) => Either::Left(Err(fatal)),
+        }
+    }
+}
+
+impl<R> Machine<R> {
+    pub(super) fn inner(&self) -> Result<&InnerMachine<R>, &FatalError> {
+        self.inner.as_ref()
+    }
 }
 
 impl<R> Machine<R> {
@@ -81,14 +94,14 @@ impl<R> Machine<R> {
         self.actions.push(action);
         self
     }
-    pub(super) fn from_pushable(id: impl Into<MissingValue>, pushable: Pushable<R>) -> Self {
+    pub(crate) fn from_pushable(id: impl Into<MissingValue>, pushable: Pushable<R>) -> Self {
         Self {
             dependencies: vec![],
             inner: Ok(InnerMachine::Pushable(id.into(), pushable)),
             actions: vec![],
         }
     }
-    pub(super) fn from_task<T>(task: T, pushable: TaskPushable<T, R>) -> Self
+    pub(crate) fn from_task<T>(task: T, pushable: TaskPushable<T, R>) -> Self
     where
         OnTask<R>: From<(T, TaskPushable<T, R>)>,
         T: SpecificTaskRequest,
@@ -109,7 +122,7 @@ impl<R> Machine<R> {
     }
 }
 impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
-    pub(super) fn from_res(result: Result<Machine<R>, Either<cerr, FatalError>>) -> Self {
+    pub(crate) fn from_res(result: Result<Machine<R>, Either<cerr, FatalError>>) -> Self {
         match result {
             Ok(r) => r,
             Err(err) => Self::from_err(err),
@@ -126,7 +139,7 @@ impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
     }
 }
 
-pub(super) fn cast_param<'a, RuntimeT: SpecializeFrom>(
+pub(crate) fn cast_param<'a, RuntimeT: SpecializeFrom>(
     param: Param<'a>,
 ) -> Result<Cow<'a, RuntimeT>, Either<cerr, FatalError>> {
     match param {
