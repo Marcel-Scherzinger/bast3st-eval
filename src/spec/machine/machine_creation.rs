@@ -109,6 +109,34 @@ where
     }
 }
 
+/// WARNING: this always clones
+/// A solution, that involves work, could be to replace [`Cow`] in the closure signature
+/// with an associated type, but this would prevent inference.
+/// This is left open as most of the types in this project are cheap to clone
+///
+/// The problem is that a reference `&RuntimeT` can only be converted to an owned
+/// value of type `Option<&RuntimeT>` and *not* to `&Option<RuntimeT>` what would be
+/// needed for [`Cow`]. The other direction is possible using [`Option::as_ref`].
+///
+/// This direction seems to be impossible so the only solution would be a new trait with
+/// new methods specifically for `Option`.
+impl<E, T, RuntimeT> MachineConstruction<E, Option<RuntimeT>> for Option<T>
+where
+    RuntimeT: Clone,
+    T: MachineConstruction<E, RuntimeT>,
+{
+    fn query_cow<R: ClarifiedCerrMerging + 'static>(
+        self,
+        closure: impl for<'a> FnOnce(Cow<'a, Option<RuntimeT>>) -> Machine<R> + 'static,
+    ) -> Machine<R> {
+        if let Some(val) = self {
+            val.query_cow(move |runtime| closure(Cow::Owned(Some(runtime.into_owned()))))
+        } else {
+            closure(Cow::Owned(None))
+        }
+    }
+}
+
 macro_rules! impl_task_queries {
     ($task: ty) => {
         impl<RuntimeT> MachineConstruction<$task, RuntimeT> for $task

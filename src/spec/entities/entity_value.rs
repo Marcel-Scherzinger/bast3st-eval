@@ -10,8 +10,9 @@ use crate::{
         entities::eval_if_then_else,
         machine::{Machine, MachineConstruction, MachineConstructionN},
         runtime::{
-            Array, CompiledRegex, Mapping, NetworkRequest, NetworkResponse, RuntimeAny,
-            RuntimeCriterion, RuntimeValue, Selector,
+            Array, ClarifiedCerrMerging, CompiledRegex, Mapping, NetworkRequest, NetworkResponse,
+            PossibleRuntimeValue, RuntimeAny, RuntimeCriterion, RuntimeValue, Selector,
+            SpecializeFrom,
         },
     },
 };
@@ -204,7 +205,7 @@ impl ValueEntity {
             Self::ReadBlockcount {} => Selector::Blockcount.std_machine::<Mapping>(),
             Self::ReadVariables {} => Selector::Variables.std_machine::<Mapping>(),
             Self::IfThenElse { if_, then_, else_ } => {
-                eval_if_then_else(if_, then_.clone(), else_.clone())
+                eval_flat_if_then_else(if_, then_.clone(), else_.clone())
             }
             Self::Concat { a } => eval_concat(a.iter().rev().cloned().collect(), String::default()),
             Self::View {
@@ -317,18 +318,18 @@ impl ValueEntity {
                 let do_for_group = move |pattern, sup, group: PrimitiveValue| {
                     CompiledRegex::from(pattern).query(move |pattern: regex::Regex| match sup {
                         RuntimeValue::Mapping(_)
-                        | RuntimeValue::Prim(PrimitiveValue::Number(_) | PrimitiveValue::Bool(_)) =>
-                        {
-                             cerr::regex_invalidHaystack.into()
-                        }
+                        | RuntimeValue::Prim(
+                            PrimitiveValue::Number(_), /*| PrimitiveValue::Bool(_) */
+                        ) => cerr::regex_invalidHaystack.into(),
                         RuntimeValue::Array(array) => {
                             for item in array.iter() {
-                                if let RuntimeValue::Prim(PrimitiveValue::Str(text)) = item && let Some(capture) = pattern.captures(text){
+                                if let RuntimeValue::Prim(PrimitiveValue::Str(text)) = item
+                                    && let Some(capture) = pattern.captures(text)
+                                {
                                     return process_capture_group(capture, group);
                                 }
                             }
                             Machine::from(cerr::regex_noMatch)
-
                         }
                         RuntimeValue::Prim(PrimitiveValue::Str(text)) => {
                             let capture = pattern.captures(&text).ok_or(cerr::regex_noMatch);
@@ -471,4 +472,24 @@ fn eval_concat(
     } else {
         Machine::from_final(RuntimeValue::Prim(PrimitiveValue::Str(finished.into())))
     }
+}
+
+pub(super) fn eval_flat_if_then_else<
+    E,
+    R: Clone + SpecializeFrom + ClarifiedCerrMerging + 'static,
+>(
+    if_: &EntityId<CriterionEntity>,
+    then_: E,
+    else_: E,
+) -> Machine<R>
+where
+    E: PossibleRuntimeValue<R> + MachineConstruction<E, R> + 'static,
+{
+    if_.query_ref(move |if_: &RuntimeCriterion| {
+        if if_.is_fulfilled() {
+            then_.query(|then_| Machine::from_final(then_))
+        } else {
+            else_.query(|else_| Machine::from_final(else_))
+        }
+    })
 }

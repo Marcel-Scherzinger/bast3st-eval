@@ -19,12 +19,40 @@ pub use hooks::*;
 pub use machine::{MachineConstruction, MachineConstructionN};
 pub use structure::*;
 
-#[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize, Clone, From)]
+#[derive(Debug, Serialize, Deserialize, Clone, From)]
 #[serde(untagged)]
 pub enum PrimitiveValue {
+    // Bool(bool),
     Str(Text),
     Number(Numeric),
-    Bool(bool),
+}
+
+impl PartialEq for PrimitiveValue {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Str(a), Self::Str(b)) => a == b,
+            (Self::Number(a), Self::Number(b)) => a == b,
+            (Self::Str(s), Self::Number(n)) | (Self::Number(n), Self::Str(s)) => {
+                if let Ok(i) = s.parse() {
+                    Numeric::Int(i) == *n
+                } else if let Ok(f) = s.parse() {
+                    Numeric::Float(f) == *n
+                } else {
+                    false
+                }
+            }
+        }
+    }
+}
+impl PartialOrd for PrimitiveValue {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        match (self, other) {
+            (Self::Str(a), Self::Str(b)) => a.partial_cmp(b),
+            (Self::Number(a), Self::Number(b)) => a.partial_cmp(b),
+            (Self::Str(s), Self::Number(n)) => s.as_ref().partial_cmp(&n.to_string()),
+            (Self::Number(n), Self::Str(s)) => n.to_string().as_str().partial_cmp(s),
+        }
+    }
 }
 
 impl PrimitiveValue {
@@ -32,7 +60,7 @@ impl PrimitiveValue {
         match self {
             Self::Str(t) => t,
             Self::Number(n) => n.to_string().into(),
-            Self::Bool(b) => b.to_string().into(),
+            // Self::Bool(b) => b.to_string().into(),
         }
     }
 }
@@ -81,14 +109,14 @@ impl<'a> From<&'a str> for MapKey {
 pub enum MapKey {
     Str(Text),
     Int(i64),
-    Bool(bool),
+    // Bool(bool),
 }
 impl MapKey {
     pub fn into_text(self) -> Text {
         match self {
             Self::Str(t) => t,
             Self::Int(i) => i.to_string().into(),
-            Self::Bool(b) => b.to_string().into(),
+            // Self::Bool(b) => b.to_string().into(),
         }
     }
 }
@@ -98,7 +126,7 @@ impl From<MapKey> for PrimitiveValue {
         match value {
             MapKey::Str(t) => Self::Str(t),
             MapKey::Int(i) => Self::Number(Numeric::Int(i)),
-            MapKey::Bool(b) => Self::Bool(b),
+            // MapKey::Bool(b) => Self::Bool(b),
         }
     }
 }

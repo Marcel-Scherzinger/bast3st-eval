@@ -134,8 +134,8 @@ impl_possible!(EntityId<Entity>:
     RuntimeValue, PrimitiveValue, Array, Mapping,
     Text, Numeric, MapKey
 );
-impl_possible!(EntityId<ActionEntity>: RuntimeAction, );
-impl_possible!(EntityId<CriterionEntity>: RuntimeCriterion, );
+impl_possible!(EntityId<ActionEntity>: RuntimeAction, RuntimeAny);
+impl_possible!(EntityId<CriterionEntity>: RuntimeCriterion, RuntimeAny);
 
 impl_possible!(ValueReference:
     RuntimeAny,
@@ -161,7 +161,7 @@ impl_marker!(MachineReturnVal: RuntimeAction, RuntimeCriterion, RuntimeValue);
 
 // ClarifiedCerrMerging
 impl_marker!(ClarifiedCerrMerging: RuntimeAction, RuntimeCriterion, RuntimeValue,
-    PrimitiveValue, Array, Mapping, Text, SNumber, NetworkResponse);
+    PrimitiveValue, Array, Mapping, Text, SNumber, NetworkResponse, bool);
 
 impl ClarifiedCerrMerging for RuntimeAny {
     fn maybe_merge(m: Machine<Self>) -> Machine<Self>
@@ -230,7 +230,7 @@ impl SpecializeFrom<PrimitiveValue> for MapKey {
     {
         match any.into_owned() {
             PrimitiveValue::Str(s) => Ok(Cow::Owned(Self::Str(s.clone()))),
-            PrimitiveValue::Bool(b) => Ok(Cow::Owned(Self::Bool(b))),
+            // PrimitiveValue::Bool(b) => Ok(Cow::Owned(Self::Bool(b))),
             PrimitiveValue::Number(Numeric::Int(i)) => Ok(Cow::Owned(Self::Int(i))),
             _ => Err(cerr::typing_notMapkey),
         }

@@ -1,10 +1,12 @@
 use std::{collections::BTreeMap, sync::Arc};
+mod criterion;
 mod marker;
 mod network;
 mod selector;
 mod tasks;
 
 pub use crate::spec::RuntimeAction;
+pub use crate::spec::runtime::criterion::{InnerRuntimeCriterion, RuntimeCriterion};
 use derive_more::{Deref, From};
 pub use marker::MachineReturnVal;
 pub(super) use marker::{
@@ -29,33 +31,26 @@ pub enum RuntimeAny {
     Catchable(cerr),
 }
 
-#[derive(Debug, Clone, Hash)]
-pub struct RuntimeCriterion {
-    is_fulfilled: bool,
-    failure_explaination: Option<Text>,
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, From, Default)]
+pub enum MaybeEval<T> {
+    #[default]
+    Unevaluated,
+    Evaluated(T),
 }
-
-impl RuntimeCriterion {
-    pub fn new(is_fulfilled: bool, failure_explaination: Option<Text>) -> Self {
-        Self {
-            is_fulfilled,
-            failure_explaination,
+impl<T> MaybeEval<T> {
+    pub fn as_eval(&self) -> Option<&T> {
+        if let Self::Evaluated(t) = self {
+            Some(t)
+        } else {
+            None
         }
     }
-    pub fn new_fulfilled() -> Self {
-        Self::new(true, None)
-    }
-    pub fn new_unfulfilled(failure_explaination: Option<Text>) -> Self {
-        Self::new(true, failure_explaination)
-    }
-    pub fn is_fulfilled(&self) -> bool {
-        self.is_fulfilled
-    }
-    pub fn is_not_fulfilled(&self) -> bool {
-        !self.is_fulfilled
-    }
-    pub fn failure_explaination(&self) -> Option<&Text> {
-        self.failure_explaination.as_ref()
+    pub fn into_eval(self) -> Option<T> {
+        if let Self::Evaluated(t) = self {
+            Some(t)
+        } else {
+            None
+        }
     }
 }
 
