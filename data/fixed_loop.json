@@ -6,7 +6,7 @@
       "tests": [
         {
           "title": "1 bis 5",
-          "criterion": 8
+          "criterion": 7
         }
       ]
     }
@@ -14,8 +14,8 @@
   "hooks": {
     "before-all-categories": [
       [
-        12,
-        13
+        11,
+        12
       ]
     ]
   },
@@ -51,35 +51,31 @@
       ]
     },
     "7": {
-      "op": "lit",
-      "v": 1
-    },
-    "8": {
       "op": "contain-onlynum",
       "fexp": 2,
-      "sub": 7,
+      "sub": 1,
       "sup": 6
     },
-    "9": {
+    "8": {
       "op": "read-blockcount"
     },
-    "10": {
+    "9": {
       "op": "mapitem",
-      "m": 9,
+      "m": 8,
       "k": [
         "total"
       ]
     },
-    "11": {
+    "10": {
       "op": "lit",
       "v": 30
     },
-    "12": {
+    "11": {
       "op": ">",
-      "l": 10,
-      "r": 11
+      "l": 9,
+      "r": 10
     },
-    "13": {
+    "12": {
       "op": "send-msg",
       "t": "Sie verwenden zu viele Bl\u00f6cke",
       "s": "error"
