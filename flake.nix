@@ -5,6 +5,9 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
     bast3st-py.url = "github:marcel-scherzinger/bast3st-py";
+    # This is necessary for "bast3st" being available as library
+    bast3st-py.inputs.nixpkgs.follows = "nixpkgs";
+    bast3st-py.inputs.flake-parts.follows = "flake-parts";
   };
   outputs = inputs @ {flake-parts, ...}: let
   in
