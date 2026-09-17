@@ -3,12 +3,12 @@ use std::borrow::Cow;
 use crate::{
     catchable::cerr,
     spec::{
-        ActionEntity, CriterionEntity, Entity, EntityId, MapKey, Numeric, PrimitiveValue, Text,
-        ValueReference,
+        ActionEntity, CriterionEntity, Entity, EntityId, MapKey, MappingOrArray, Numeric,
+        PrimitiveValue, RealMapping, Text, ValueReference,
         machine::Machine,
         runtime::{
-            Array, Mapping, NetworkRequest, NetworkResponse, RuntimeAction, RuntimeCriterion,
-            RuntimeValue, Selector,
+            Array, NetworkRequest, NetworkResponse, RuntimeAction, RuntimeCriterion, RuntimeValue,
+            Selector,
         },
     },
 };
@@ -63,6 +63,20 @@ macro_rules! impl_specialize {
             }
         }
     };
+    ($ty: ty [from $from: ty], $err: expr, $t: pat, $o: ident) => {
+        impl SpecializeFrom<$from> for $ty {
+            fn specialize_from<'a>(any: std::borrow::Cow<'a, $from>) -> Result<Cow<'a, Self>, cerr>
+            where
+                Self: Sized,
+            {
+                match any {
+                    Cow::Borrowed($t) => Ok(Cow::Borrowed($o)),
+                    Cow::Owned($t) => Ok(Cow::Owned($o)),
+                    _ => Err($err),
+                }
+            }
+        }
+    };
 }
 
 macro_rules! impl_possible {
@@ -112,15 +126,40 @@ impl_specialize!(
 );
 
 impl_specialize!(
-    Array,
-    cerr::typing_notArray,
-    RuntimeAny::Value(RuntimeValue::Array(o)),
+    MappingOrArray,
+    cerr::typing_notCollection,
+    RuntimeAny::Value(RuntimeValue::Comp(o)),
     o
 );
 impl_specialize!(
-    Mapping,
-    cerr::typing_notMapping,
-    RuntimeAny::Value(RuntimeValue::Mapping(o)),
+    Array,
+    cerr::typing_notCollection_notArray,
+    RuntimeAny::Value(RuntimeValue::Comp(MappingOrArray::Array(o))),
+    o
+);
+impl_specialize!(
+    RealMapping,
+    cerr::typing_notCollection_notMapping,
+    RuntimeAny::Value(RuntimeValue::Comp(MappingOrArray::Mapping(o))),
+    o
+);
+
+impl_specialize!(
+    MappingOrArray[from RuntimeValue],
+    cerr::typing_notCollection,
+    RuntimeValue::Comp(o),
+    o
+);
+impl_specialize!(
+    Array [from RuntimeValue],
+    cerr::typing_notCollection_notArray,
+    RuntimeValue::Comp(MappingOrArray::Array(o)),
+    o
+);
+impl_specialize!(
+    RealMapping [from RuntimeValue],
+    cerr::typing_notCollection_notMapping,
+    RuntimeValue::Comp(MappingOrArray::Mapping(o)),
     o
 );
 
@@ -131,7 +170,7 @@ impl_possible!(EntityId<Entity>:
     RuntimeAction,
     RuntimeCriterion,
     //
-    RuntimeValue, PrimitiveValue, Array, Mapping,
+    RuntimeValue, PrimitiveValue, Array, MappingOrArray, RealMapping,
     Text, Numeric, MapKey
 );
 impl_possible!(EntityId<ActionEntity>: RuntimeAction, RuntimeAny);
@@ -140,9 +179,9 @@ impl_possible!(EntityId<CriterionEntity>: RuntimeCriterion, RuntimeAny);
 impl_possible!(ValueReference:
     RuntimeAny,
     //
-    RuntimeValue, PrimitiveValue, Array, Mapping, Text, Numeric, MapKey
+    RuntimeValue, PrimitiveValue, Array, RealMapping, MappingOrArray, Text, Numeric, MapKey
 );
-impl_possible!(Selector: RuntimeValue, Array, Mapping, NetworkResponse);
+impl_possible!(Selector: RuntimeValue, Array, RealMapping, MappingOrArray, NetworkResponse);
 impl_possible!(NetworkRequest: NetworkResponse);
 
 impl_marker!(
@@ -153,7 +192,8 @@ impl_marker!(
     RuntimeCriterion,
     PrimitiveValue,
     Array,
-    Mapping,
+    RealMapping,
+    MappingOrArray,
     Text,
     SNumber
 );
@@ -161,7 +201,7 @@ impl_marker!(MachineReturnVal: RuntimeAction, RuntimeCriterion, RuntimeValue);
 
 // ClarifiedCerrMerging
 impl_marker!(ClarifiedCerrMerging: RuntimeAction, RuntimeCriterion, RuntimeValue,
-    PrimitiveValue, Array, Mapping, Text, SNumber, NetworkResponse, bool);
+    PrimitiveValue, Array, RealMapping, MappingOrArray, Text, SNumber, NetworkResponse, bool);
 
 impl ClarifiedCerrMerging for RuntimeAny {
     fn maybe_merge(m: Machine<Self>) -> Machine<Self>
@@ -190,30 +230,6 @@ impl SpecializeFrom<Text> for PrimitiveValue {
     }
 }
 
-impl SpecializeFrom<RuntimeValue> for Array {
-    fn specialize_from<'a>(any: Cow<'a, RuntimeValue>) -> Result<Cow<'a, Self>, cerr>
-    where
-        Self: Sized,
-    {
-        match any {
-            Cow::Owned(RuntimeValue::Array(a)) => Ok(Cow::Owned(a)),
-            Cow::Borrowed(RuntimeValue::Array(a)) => Ok(Cow::Borrowed(a)),
-            _ => Err(cerr::typing_notArray),
-        }
-    }
-}
-impl SpecializeFrom<RuntimeValue> for Mapping {
-    fn specialize_from<'a>(any: Cow<'a, RuntimeValue>) -> Result<Cow<'a, Self>, cerr>
-    where
-        Self: Sized,
-    {
-        match any {
-            Cow::Owned(RuntimeValue::Mapping(m)) => Ok(Cow::Owned(m)),
-            Cow::Borrowed(RuntimeValue::Mapping(m)) => Ok(Cow::Borrowed(m)),
-            _ => Err(cerr::typing_notMapping),
-        }
-    }
-}
 impl SpecializeFrom for MapKey {
     fn specialize_from<'a>(any: Cow<'a, RuntimeAny>) -> Result<Cow<'a, Self>, cerr>
     where

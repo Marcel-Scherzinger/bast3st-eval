@@ -6,7 +6,7 @@ mod entity_value;
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 
-use crate::spec::Text;
+use crate::spec::{Machine, RuntimeAny, Text};
 
 pub use entity_action::*;
 pub use entity_criterion::*;
@@ -19,6 +19,16 @@ pub enum Entity {
     Criterion(CriterionEntity),
     Action(ActionEntity),
     Value(ValueEntity),
+}
+
+impl Entity {
+    pub fn machine(&self) -> Machine<RuntimeAny> {
+        match self {
+            Self::Criterion(i) => i.machine().map(RuntimeAny::Criterion),
+            Self::Action(i) => i.machine().map(RuntimeAny::Action),
+            Self::Value(i) => i.machine().map(RuntimeAny::Value),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone)]

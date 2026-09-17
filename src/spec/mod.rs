@@ -12,15 +12,19 @@ use serde::{Deserialize, Serialize};
 
 pub use entities::*;
 pub use hooks::*;
-pub use machine::{MachineConstruction, MachineConstructionN};
+pub use machine::{
+    FatalError, Machine, MachineConstruction, MachineConstructionN, MissingValue, UnfinishedMachine,
+};
 pub use runtime::*;
 pub use structure::*;
 
-#[derive(Debug, Serialize, Deserialize, Clone, From)]
+#[derive(derive_more::Debug, Serialize, Deserialize, Clone, From)]
 #[serde(untagged)]
 pub enum PrimitiveValue {
     // Bool(bool),
+    #[debug("{_0:?}")]
     Str(Text),
+    #[debug("{_0}")]
     Number(Numeric),
 }
 
@@ -46,8 +50,8 @@ impl PartialOrd for PrimitiveValue {
         match (self, other) {
             (Self::Str(a), Self::Str(b)) => a.partial_cmp(b),
             (Self::Number(a), Self::Number(b)) => a.partial_cmp(b),
-            (Self::Str(s), Self::Number(n)) => s.as_ref().partial_cmp(&n.to_string()),
-            (Self::Number(n), Self::Str(s)) => n.to_string().as_str().partial_cmp(s),
+            (Self::Str(s), Self::Number(n)) => s.as_ref().partial_cmp(n.to_string().as_str()),
+            (Self::Number(n), Self::Str(s)) => n.to_string().as_str().partial_cmp(s.as_ref()),
         }
     }
 }
@@ -65,8 +69,19 @@ impl PrimitiveValue {
 pub type Numeric = scratch_test_value::SNumber;
 
 #[derive(
-    Debug, PartialEq, PartialOrd, Deref, Clone, Serialize, Deserialize, Eq, Ord, From, Hash,
+    derive_more::Debug,
+    PartialEq,
+    PartialOrd,
+    Deref,
+    Clone,
+    Serialize,
+    Deserialize,
+    Eq,
+    Ord,
+    From,
+    Hash,
 )]
+#[debug("{_0:?}")]
 pub struct Text(Arc<str>);
 
 impl From<String> for Text {
@@ -115,6 +130,9 @@ impl MapKey {
             Self::Int(i) => i.to_string().into(),
             // Self::Bool(b) => b.to_string().into(),
         }
+    }
+    pub fn to_prim(&self) -> PrimitiveValue {
+        self.clone().into()
     }
 }
 

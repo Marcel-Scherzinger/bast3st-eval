@@ -4,11 +4,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     catchable::cerr,
     spec::{
-        ActionEntity, CriterionEntity, EntityId, MapKey, NetworkMethod, Numeric, PrimitiveValue,
-        RuntimeAction, Text, ValueReference,
+        ActionEntity, CriterionEntity, EntityId, FatalError, MapKey, MappingOrArray, NetworkMethod,
+        Numeric, PrimitiveValue, RealMapping, RuntimeAction, Text, ValueReference,
         machine::{Machine, MachineConstruction, MachineConstructionN},
         runtime::{
-            Array, ClarifiedCerrMerging, CompiledRegex, Mapping, NetworkRequest, NetworkResponse,
+            Array, ClarifiedCerrMerging, CompiledRegex, NetworkRequest, NetworkResponse,
             PossibleRuntimeValue, RuntimeAny, RuntimeCriterion, RuntimeValue, Selector,
             SpecializeFrom,
         },
@@ -198,10 +198,10 @@ impl ValueEntity {
             Self::ReadInput {} => Selector::Input.std_machine::<Array>(),
             Self::ReadRandoms {} => Selector::Randoms.std_machine::<Array>(),
             Self::ReadOutput {} => Selector::Output.std_machine::<Array>(),
-            Self::ReadParam {} => Selector::Param.std_machine::<Mapping>(),
-            Self::ReadLists {} => Selector::Lists.std_machine::<Mapping>(),
-            Self::ReadBlockcount {} => Selector::Blockcount.std_machine::<Mapping>(),
-            Self::ReadVariables {} => Selector::Variables.std_machine::<Mapping>(),
+            Self::ReadParam {} => Selector::Param.std_machine::<RealMapping>(),
+            Self::ReadLists {} => Selector::Lists.std_machine::<RealMapping>(),
+            Self::ReadBlockcount {} => Selector::Blockcount.std_machine::<RealMapping>(),
+            Self::ReadVariables {} => Selector::Variables.std_machine::<RealMapping>(),
             Self::IfThenElse { if_, then_, else_ } => {
                 eval_flat_if_then_else(if_, then_.clone(), else_.clone())
             }
@@ -211,10 +211,12 @@ impl ValueEntity {
                 mapping,
             } => mapping.query({
                 let perspective = perspective.clone();
-                move |mapping: Mapping| match perspective.as_str() {
-                    "keys" => val(mapping.keys().cloned().collect::<Array>()),
-                    "values" => val(mapping.values().cloned().collect::<Array>()),
-                    _ => cerr::exotic_unknownPerspective.into(),
+                move |mapping: MappingOrArray| match (mapping, perspective.as_str()) {
+                    (mapping, "keys") => {
+                        val(mapping.keys().map(|x| x.to_prim()).collect::<Array>())
+                    }
+                    (mapping, "values") => val(mapping.value_array()),
+                    (_, _) => FatalError::UnknownViewPerspective(perspective.into()).into(),
                 }
             }),
             Self::Trim { value } => map_simple!(value: &Text; trim),
@@ -283,8 +285,7 @@ impl ValueEntity {
             }
             Self::Length { value } => value.query(|value: RuntimeValue| {
                 let length: usize = match value {
-                    RuntimeValue::Array(array) => array.len(),
-                    RuntimeValue::Mapping(mapping) => mapping.len(),
+                    RuntimeValue::Comp(ma) => ma.len(),
                     RuntimeValue::Prim(PrimitiveValue::Str(text)) => text.chars().count(),
                     _ => return cerr::typing_notIterable.into(),
                 };
@@ -315,11 +316,11 @@ impl ValueEntity {
 
                 let do_for_group = move |pattern, sup, group: PrimitiveValue| {
                     CompiledRegex::from(pattern).query(move |pattern: regex::Regex| match sup {
-                        RuntimeValue::Mapping(_)
+                        RuntimeValue::Comp(MappingOrArray::Mapping(_))
                         | RuntimeValue::Prim(
                             PrimitiveValue::Number(_), /*| PrimitiveValue::Bool(_) */
                         ) => cerr::regex_invalidHaystack.into(),
-                        RuntimeValue::Array(array) => {
+                        RuntimeValue::Comp(MappingOrArray::Array(array)) => {
                             for item in array.iter() {
                                 if let RuntimeValue::Prim(PrimitiveValue::Str(text)) = item
                                     && let Some(capture) = pattern.captures(text)
@@ -417,7 +418,7 @@ fn eval_network_request(
             if allowed_status.is_some_and(|allowed| !allowed.contains(&resp.status())) {
                 return cerr::network_statusDisallowed.into();
             }
-            RuntimeValue::Mapping(resp.into()).into()
+            RuntimeValue::Comp(MappingOrArray::Mapping(resp.into())).into()
         })
     })
 }
@@ -444,14 +445,11 @@ fn eval_mapitem(
 ) -> Machine<RuntimeValue> {
     if let Some(key) = reversed_keys.pop() {
         key.query(|key: MapKey| match current {
-            RuntimeValue::Mapping(mapping) => {
-                if let Some(next) = mapping.get(&key).cloned() {
-                    eval_mapitem(next, reversed_keys)
-                } else {
-                    cerr::mapping_missingKey.into()
-                }
-            }
-            _ => cerr::typing_notMapping.into(),
+            RuntimeValue::Comp(mapping) => match mapping.get(&key) {
+                Ok(next) => eval_mapitem(next.clone(), reversed_keys),
+                Err(err) => err.into(),
+            },
+            _ => cerr::typing_notCollection.into(),
         })
     } else {
         Machine::from_final(current)

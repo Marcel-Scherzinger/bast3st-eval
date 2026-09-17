@@ -11,25 +11,6 @@ impl std::fmt::Debug for cerr {
     }
 }
 
-#[allow(non_upper_case_globals)]
-impl cerr {
-    pub const typing_notValue: cerr = cerr::any;
-    pub const typing_notPrimitive: cerr = cerr::any;
-    pub const typing_notArray: cerr = cerr::any;
-    pub const typing_notMapping: cerr = cerr::any;
-    pub const typing_notAction: cerr = cerr::any;
-    pub const typing_notCriterion: cerr = cerr::any;
-    pub const typing_notText: cerr = cerr::any;
-    pub const typing_notNumeric: cerr = cerr::any;
-    pub const exotic_unknownPerspective: cerr = cerr::any;
-    pub const mapping_missingKey: cerr = cerr::any;
-    pub const typing_notMapkey: cerr = cerr::any;
-    pub const typing_notNetworkResp: cerr = cerr::any;
-    pub const typing_notIterable: cerr = cerr::any;
-    pub const regex_noGroup: cerr = cerr::any;
-    pub const regex_invalidHaystack: cerr = cerr::any;
-}
-
 /*
 #[serde(serialize_with = "path")]
 

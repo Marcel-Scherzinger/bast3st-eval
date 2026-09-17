@@ -5,8 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     catchable::cerr,
     spec::{
-        ActionEntity, EntityId, MachineConstruction, MachineConstructionN, Numeric, PrimitiveValue,
-        RuntimeAction, Text, ValueReference,
+        ActionEntity, EntityId, MachineConstruction, MachineConstructionN, MappingOrArray, Numeric,
+        PrimitiveValue, RuntimeAction, Text, ValueReference,
         machine::Machine,
         runtime::{
             CompiledRegex, InnerRuntimeCriterion, MaybeEval, RuntimeAny, RuntimeCriterion,
@@ -303,11 +303,13 @@ impl CriterionEntity {
                     CompiledRegex::from(pattern.clone()).query(|rx: regex::Regex| {
                         let mut is_match = false;
                         match sup {
-                            RuntimeValue::Mapping(_)
-                            | RuntimeValue::Prim(
+                            RuntimeValue::Prim(
                                 PrimitiveValue::Number(_), /*| PrimitiveValue::Bool(_) */
-                            ) => return cerr::regex_invalidHaystack.into(),
-                            RuntimeValue::Array(ref array) => {
+                            )
+                            | RuntimeValue::Comp(MappingOrArray::Mapping(_)) => {
+                                return cerr::regex_invalidHaystack.into();
+                            }
+                            RuntimeValue::Comp(MappingOrArray::Array(ref array)) => {
                                 for item in array.iter() {
                                     if let RuntimeValue::Prim(PrimitiveValue::Str(text)) = item
                                         && rx.is_match(text)

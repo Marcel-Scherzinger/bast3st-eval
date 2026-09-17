@@ -1,4 +1,6 @@
+use std::borrow::Cow;
 use std::{collections::BTreeMap, sync::Arc};
+mod collections;
 mod criterion;
 mod marker;
 mod network;
@@ -7,13 +9,17 @@ mod tasks;
 
 pub use crate::spec::RuntimeAction;
 pub use crate::spec::runtime::criterion::{InnerRuntimeCriterion, RuntimeCriterion};
+use bitflags::iter::IterNames;
+pub use collections::{Array, MappingOrArray, RealMapping};
 use derive_more::{Deref, From};
+use either::Either;
 pub use marker::MachineReturnVal;
 pub(super) use marker::{
     CheapBorrowFromAny, ClarifiedCerrMerging, PossibleRuntimeValue, SpecializeFrom,
 };
 pub use network::{InnerNetworkRequest, NetworkRequest, NetworkResponse};
 pub use selector::Selector;
+use serde_json::Map;
 pub use tasks::{CompiledRegex, SpecificTaskRequest};
 
 use crate::spec::Numeric;
@@ -53,32 +59,10 @@ impl<T> MaybeEval<T> {
     }
 }
 
-#[derive(Debug, Clone, Deref, PartialEq, PartialOrd, Default, From)]
-pub struct Array(Arc<[RuntimeValue]>);
-#[derive(Debug, Clone, Deref, PartialEq, PartialOrd, Default, From)]
-pub struct Mapping(Arc<BTreeMap<MapKey, RuntimeValue>>);
-
-impl<P: Into<RuntimeValue>> FromIterator<P> for Array {
-    fn from_iter<T: IntoIterator<Item = P>>(iter: T) -> Self {
-        Self(iter.into_iter().map(|x| x.into()).collect())
-    }
-}
-impl From<BTreeMap<MapKey, RuntimeValue>> for Mapping {
-    fn from(value: BTreeMap<MapKey, RuntimeValue>) -> Self {
-        Self(value.into())
-    }
-}
-impl From<Vec<RuntimeValue>> for Array {
-    fn from(value: Vec<RuntimeValue>) -> Self {
-        Self(value.into())
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum RuntimeValue {
     Prim(PrimitiveValue),
-    Array(Array),
-    Mapping(Mapping),
+    Comp(MappingOrArray),
 }
 
 impl<T> From<T> for RuntimeValue
@@ -89,14 +73,19 @@ where
         Self::Prim(value.into())
     }
 }
-impl From<Array> for RuntimeValue {
-    fn from(value: Array) -> Self {
-        Self::Array(value)
+impl From<MappingOrArray> for RuntimeValue {
+    fn from(value: MappingOrArray) -> Self {
+        Self::Comp(value)
     }
 }
-impl From<Mapping> for RuntimeValue {
-    fn from(value: Mapping) -> Self {
-        Self::Mapping(value)
+impl From<Array> for RuntimeValue {
+    fn from(value: Array) -> Self {
+        Self::Comp(value.into())
+    }
+}
+impl From<RealMapping> for RuntimeValue {
+    fn from(value: RealMapping) -> Self {
+        Self::Comp(value.into())
     }
 }
 

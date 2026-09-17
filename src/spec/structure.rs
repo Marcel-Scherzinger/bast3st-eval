@@ -53,3 +53,9 @@ pub struct AlternativeTest {
     #[serde(default)]
     hooks: AlternativeTestHooks,
 }
+
+impl Bast3StSpec {
+    pub fn entities(&self) -> &BTreeMap<u64, Entity> {
+        &self.entities
+    }
+}

@@ -7,11 +7,11 @@
         "pyproject-nix": "pyproject-nix"
       },
       "locked": {
-        "lastModified": 1788803764,
-        "narHash": "sha256-3kG7yDadaGHo7nn28p4pbLuuButEIrUg9jj+Gmf3Q4w=",
+        "lastModified": 1789646581,
+        "narHash": "sha256-2ORnELGBl7UnnrUUFAbJEwKsvFFEe5NVT80iR55n67k=",
         "owner": "marcel-scherzinger",
         "repo": "bast3st-py",
-        "rev": "937bbd4e6cf6d4cf655fc95942c9082fec18cefd",
+        "rev": "567f2014ae587426cc240edfde156ab517b4ba50",
         "type": "github"
       },
       "original": {

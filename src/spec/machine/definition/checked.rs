@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::spec::{
     Entity, EntityId, RuntimeAction, RuntimeAny, SpecificTaskRequest,
     machine::{
@@ -65,6 +67,9 @@ where
                 }
             }),
         }
+    }
+    pub fn call<'a>(self, val: Cow<'a, <T as SpecificTaskRequest>::MainOutput>) -> Machine<R> {
+        (self.closure)(val)
     }
 }
 

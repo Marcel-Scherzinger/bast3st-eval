@@ -12896,7 +12896,7 @@
       "v": "Sie h\u00e4tten etwas ausgeben sollen wie 'Das Produkt der beiden Zahlen ist nicht gr\u00f6\u00dfer als 50'"
     },
     "9": {
-      "op": "any_of",
+      "op": "any-of",
       "a": [
         5,
         7
@@ -12936,7 +12936,7 @@
       "v": 8
     },
     "17": {
-      "op": "any_of",
+      "op": "any-of",
       "a": [
         15,
         14

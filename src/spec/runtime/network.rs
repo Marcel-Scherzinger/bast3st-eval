@@ -1,9 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use crate::spec::{
-    Text,
-    runtime::{Mapping, RuntimeValue},
-};
+use crate::spec::{RealMapping, Text, runtime::RuntimeValue};
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct NetworkRequest {
@@ -53,7 +50,7 @@ impl NetworkResponse {
     }
 }
 
-impl From<NetworkResponse> for Mapping {
+impl From<NetworkResponse> for RealMapping {
     fn from(value: NetworkResponse) -> Self {
         let mut mapping = BTreeMap::new();
         mapping.insert("status".into(), value.status.into());

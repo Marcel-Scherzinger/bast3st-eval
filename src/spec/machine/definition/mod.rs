@@ -10,7 +10,7 @@ pub use on_task::OnTask;
 use crate::{
     catchable::cerr,
     spec::{
-        Entity, EntityId, RuntimeAction,
+        Entity, EntityId, RuntimeAction, Text,
         runtime::{CompiledRegex, NetworkRequest, SpecificTaskRequest},
     },
 };
@@ -39,4 +39,7 @@ pub enum UnfinishedMachine<R> {
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
-pub enum FatalError {}
+pub enum FatalError {
+    EntityNotFound(u64),
+    UnknownViewPerspective(Text),
+}

@@ -1,8 +1,10 @@
+use derive_more::{Debug, Deref};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Deref)]
 #[serde(from = "u64", into = "u64")]
-pub struct EntityId<T>(pub(super) u64, std::marker::PhantomData<T>);
+#[debug("EntityId<{}>({_0})", std::any::type_name::<T>().split("::").last().unwrap_or_default())]
+pub struct EntityId<T>(#[deref] pub(super) u64, std::marker::PhantomData<T>);
 
 impl<T> Clone for EntityId<T> {
     fn clone(&self) -> Self {
