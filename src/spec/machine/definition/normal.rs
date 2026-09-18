@@ -26,22 +26,21 @@ pub enum MissingValue {
     EntityId(EntityId<Entity>),
     Selector(Selector),
     /// The stored closure doesn't require any value at all and it is expected to *not*
-    /// process that argument of type Param<'_> in any way. To ensure that no wrong
-    /// values propagate, closures requiring no value will be called with a [`FatalError`]
+    /// process that argument of type Param<'_> in any way.
     NoValueNeeded,
 }
 
 #[derive(derive_more::Debug, Default, PartialEq, PartialOrd)]
 pub struct MachineMeta {
-    /// other nodes whose value changes will affect the value of this computation
-    pub(super) dependencies: Vec<EntityId<Entity>>,
     pub(super) actions: Vec<RuntimeAction>,
     pub(super) features: Features,
+    // other nodes whose value changes will affect the value of this computation
+    // pub(super) dependencies: Vec<EntityId<Entity>>,
 }
 
 impl MachineMeta {
     pub fn extend_with(&mut self, other: MachineMeta) {
-        self.dependencies.extend(other.dependencies);
+        // self.dependencies.extend(other.dependencies);
         self.actions.extend(other.actions);
         self.features |= other.features;
     }
