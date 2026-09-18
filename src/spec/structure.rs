@@ -1,10 +1,10 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, default};
 
 use serde::{Deserialize, Serialize};
 
 use crate::spec::{
     AlternativeTestHooks, CriterionEntity, Entity, EntityId, MainTestHooks, PrimitiveValue,
-    hooks::SpecHooks,
+    RandomGeneration, hooks::SpecHooks,
 };
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -16,7 +16,7 @@ pub struct Bast3StSpec {
     #[serde(default)]
     hooks: SpecHooks,
     #[serde(rename = "nodes")]
-    entities: BTreeMap<u64, Entity>,
+    entities: BTreeMap<EntityId, Entity>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
@@ -28,34 +28,34 @@ pub struct Category {
 }
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct MainTest {
-    title: String,
-    criterion: EntityId<CriterionEntity>,
-    input: Option<Vec<PrimitiveValue>>,
-    random_generation: Option<either::Either<u64, bool>>,
-    predefined_randoms: Option<Vec<either::Either<u64, f64>>>,
-    initial_variables: Option<BTreeMap<String, PrimitiveValue>>,
-    initial_lists: Option<BTreeMap<String, Vec<PrimitiveValue>>>,
+    #[serde(flatten)]
+    general: GeneralTest<MainTestHooks>,
     #[serde(rename = "tests", default)]
     alternative_tests: Vec<AlternativeTest>,
-    #[serde(default)]
-    hooks: MainTestHooks,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct AlternativeTest {
+    #[serde(flatten)]
+    general: GeneralTest<AlternativeTestHooks>,
+}
+
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
+pub struct GeneralTest<Hooks> {
     title: String,
     criterion: EntityId<CriterionEntity>,
     input: Option<Vec<PrimitiveValue>>,
-    random_generation: Option<either::Either<u64, bool>>,
-    predefined_randoms: Option<Vec<either::Either<u64, f64>>>,
+    #[serde(default)]
+    random_generation: RandomGeneration,
+    predefined_randoms: Option<Vec<scratch_test_value::SNumber>>,
     initial_variables: Option<BTreeMap<String, PrimitiveValue>>,
     initial_lists: Option<BTreeMap<String, Vec<PrimitiveValue>>>,
     #[serde(default)]
-    hooks: AlternativeTestHooks,
+    hooks: Hooks,
 }
 
 impl Bast3StSpec {
-    pub fn entities(&self) -> &BTreeMap<u64, Entity> {
+    pub fn entities(&self) -> &BTreeMap<EntityId, Entity> {
         &self.entities
     }
 }

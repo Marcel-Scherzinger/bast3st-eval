@@ -1,7 +1,7 @@
 mod entities;
-
 mod hooks;
 mod machine;
+mod random_generation;
 mod runtime;
 mod structure;
 
@@ -15,6 +15,7 @@ pub use hooks::*;
 pub use machine::{
     FatalError, Machine, MachineConstruction, MachineConstructionN, MissingValue, UnfinishedMachine,
 };
+pub use random_generation::RandomGeneration;
 pub use runtime::*;
 pub use structure::*;
 
