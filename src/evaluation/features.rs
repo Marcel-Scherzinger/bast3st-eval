@@ -17,7 +17,7 @@ bitflags::bitflags! {
         const SENDMSG_SPEC = 1 << 2;
         const SENDMSG_CATEGORY = 1 << 3;
         const SENDMSG_MAINTEST = 1 << 4;
-        const SENDMSG_THISTEST = 1 << 5;
+        const SENDMSG_THISTEST = 1 << 5; // TODO: replace with current?
 
         const PermittedFEAT_TestScope =
               Self::SENDMSG_SPEC.0
@@ -31,13 +31,6 @@ bitflags::bitflags! {
     }
 }
 
-impl Selector {
-    pub fn required_features(&self) -> Features {
-        match self {
-            Self::Output | Self::Input | Self::Lists | Self::Variables | Self::Randoms => {
-                Features::READ_RUNDATA
-            }
-            Self::Param | Self::Flags | Self::Blockcount => Features::empty(),
-        }
-    }
+pub trait RequiredFeatures {
+    fn required_features(&self) -> Features;
 }

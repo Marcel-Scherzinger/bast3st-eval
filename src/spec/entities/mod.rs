@@ -6,7 +6,10 @@ mod entity_value;
 use derive_more::From;
 use serde::{Deserialize, Serialize};
 
-use crate::spec::{Machine, RuntimeAny, Text};
+use crate::{
+    evaluation::RequiredFeatures,
+    spec::{Machine, RuntimeAny, Text},
+};
 
 pub use entity_action::*;
 pub use entity_criterion::*;
@@ -64,10 +67,24 @@ pub enum SetFlagMode {
     Keep,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Copy, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum MessageSendingLevel {
     Spec,
     Category,
     Maintest,
+    #[default]
+    Current,
+}
+
+impl RequiredFeatures for MessageSendingLevel {
+    fn required_features(&self) -> crate::Features {
+        use crate::Features;
+        match self {
+            Self::Spec => Features::SENDMSG_SPEC,
+            Self::Category => Features::SENDMSG_CATEGORY,
+            Self::Maintest => Features::SENDMSG_MAINTEST,
+            Self::Current => Features::empty(),
+        }
+    }
 }

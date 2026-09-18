@@ -1,9 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-use crate::spec::{
-    CriterionEntity, EndThisTestMode, EntityId, MachineConstruction, MachineConstructionN, MapKey,
-    MessageSendingLevel, MessageSeverity, PrimitiveValue, SetFlagMode, Text, ValueReference,
-    machine::Machine, runtime::RuntimeCriterion,
+use crate::{
+    Features,
+    evaluation::RequiredFeatures,
+    spec::{
+        CriterionEntity, EndThisTestMode, EntityId, MachineConstruction, MachineConstructionN,
+        MapKey, MessageSendingLevel, MessageSeverity, PrimitiveValue, SetFlagMode, Text,
+        ValueReference, machine::Machine, runtime::RuntimeCriterion,
+    },
 };
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -14,8 +18,8 @@ pub enum ActionEntity {
         text: ValueReference,
         #[serde(rename = "s")]
         severity: MessageSeverity,
-        #[serde(rename = "l")]
-        level: Option<MessageSendingLevel>,
+        #[serde(rename = "l", default)]
+        level: MessageSendingLevel,
     },
     EndThisTest {
         #[serde(rename = "m")]
@@ -60,16 +64,19 @@ impl ActionEntity {
                     }
                     .into()
                 })
+                .require_features(level.required_features())
             }
             Self::EndThisTest { mode, explaination } => {
                 let mode = *mode;
-                explaination.query(move |explaination: PrimitiveValue| {
-                    RuntimeAction::EndThisTest {
-                        mode,
-                        explaination: explaination.into_text(),
-                    }
-                    .into()
-                })
+                explaination
+                    .query(move |explaination: PrimitiveValue| {
+                        RuntimeAction::EndThisTest {
+                            mode,
+                            explaination: explaination.into_text(),
+                        }
+                        .into()
+                    })
+                    .require_features(Features::END_THIS_TEST)
             }
             Self::IfThenElse { if_, then_, else_ } => {
                 let (then_, else_) = (*then_, *else_);
@@ -98,7 +105,7 @@ pub enum RuntimeAction {
     SendMsg {
         text: Text,
         severity: MessageSeverity,
-        level: Option<MessageSendingLevel>,
+        level: MessageSendingLevel,
     },
     EndThisTest {
         mode: EndThisTestMode,

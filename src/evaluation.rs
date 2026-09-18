@@ -1,7 +1,7 @@
 mod features;
 mod selection;
 
-pub use features::Features;
+pub use features::{Features, RequiredFeatures};
 pub use selection::SelectableSource;
 
 use std::{borrow::Cow, collections::BTreeMap};
