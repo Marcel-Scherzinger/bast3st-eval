@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use either::Either;
 
+use crate::Features;
 use crate::spec::machine::definition::TaskPushable;
 use crate::spec::machine::{
     FatalError, Finished, MachineWith, MachineWithTask, OnTask, Param, Pushable, UnfinishedMachine,
@@ -30,22 +31,44 @@ pub enum MissingValue {
     NoValueNeeded,
 }
 
-#[derive(derive_more::Debug)]
-#[debug("Machine {{ dependencies: {dependencies:?}, actions: {actions:?}, ...}}")]
-pub struct Machine<R> {
+#[derive(derive_more::Debug, Default, PartialEq, PartialOrd)]
+pub struct MachineMeta {
     /// other nodes whose value changes will affect the value of this computation
     pub(super) dependencies: Vec<EntityId<Entity>>,
-    pub(super) inner: Result<InnerMachine<R>, FatalError>,
     pub(super) actions: Vec<RuntimeAction>,
+    pub(super) features: Features,
+}
+
+impl MachineMeta {
+    pub fn extend_with(&mut self, other: MachineMeta) {
+        self.dependencies.extend(other.dependencies);
+        self.actions.extend(other.actions);
+        self.features |= other.features;
+    }
+    pub fn extended_with(mut self, other: MachineMeta) -> Self {
+        self.extend_with(other);
+        self
+    }
+    pub fn features(&self) -> Features {
+        self.features
+    }
+    pub fn into_actions(self) -> Vec<RuntimeAction> {
+        self.actions
+    }
+    pub fn actions(&self) -> &[RuntimeAction] {
+        &self.actions
+    }
+}
+
+#[derive(derive_more::Debug)]
+#[debug("Machine {{ meta: {meta:?}, ...}}")]
+pub struct Machine<R> {
+    pub(super) meta: MachineMeta,
+    pub(super) inner: Result<InnerMachine<R>, FatalError>,
 }
 impl<R> Machine<R> {
-    pub(super) fn continued_from(
-        mut self,
-        dependencies: Vec<EntityId<Entity>>,
-        actions: Vec<RuntimeAction>,
-    ) -> Machine<R> {
-        self.dependencies.extend(dependencies);
-        self.actions.extend(actions);
+    pub(super) fn continued_from_meta(mut self, meta: MachineMeta) -> Machine<R> {
+        self.meta.extend_with(meta);
         self
     }
 }
@@ -53,29 +76,17 @@ impl<R> Machine<R> {
 impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
     pub fn big_red_and_btn(self) -> Either<Finished<R>, UnfinishedMachine<R>> {
         match self.inner {
-            Ok(InnerMachine::Final(val)) => {
-                Either::Left(Ok(Ok((val, (self.dependencies, self.actions)))))
-            }
+            Ok(InnerMachine::Final(val)) => Either::Left(Ok(Ok((val, self.meta)))),
             Ok(InnerMachine::Pushable(_, _)) => {
                 Either::Right(UnfinishedMachine::Missing(MachineWith::new(self)))
             }
             Ok(InnerMachine::OnTask(task)) => Either::Right(match task {
-                OnTask::CompiledRegex((task, closure)) => {
-                    UnfinishedMachine::RegexTask(MachineWithTask::into_task_specific(
-                        self.dependencies,
-                        self.actions,
-                        task,
-                        closure,
-                    ))
-                }
-                OnTask::NetworkRequest((task, closure)) => {
-                    UnfinishedMachine::NetworkTask(MachineWithTask::into_task_specific(
-                        self.dependencies,
-                        self.actions,
-                        task,
-                        closure,
-                    ))
-                }
+                OnTask::CompiledRegex((task, closure)) => UnfinishedMachine::RegexTask(
+                    MachineWithTask::into_task_specific(self.meta, task, closure),
+                ),
+                OnTask::NetworkRequest((task, closure)) => UnfinishedMachine::NetworkTask(
+                    MachineWithTask::into_task_specific(self.meta, task, closure),
+                ),
             }),
             Ok(InnerMachine::Catchable(err)) => Either::Left(Ok(Err(err))),
             Err(fatal) => Either::Left(Err(fatal)),
@@ -91,14 +102,19 @@ impl<R> Machine<R> {
 
 impl<R> Machine<R> {
     pub fn with_action(mut self, action: RuntimeAction) -> Self {
-        self.actions.push(action);
+        self.meta.actions.push(action);
+        self
+    }
+    /// Add extra features that need to be enabled for the current expression to be usable.
+    /// Already present features will be ignored (bitwise or)
+    pub fn require_features(mut self, required_features: Features) -> Self {
+        self.meta.features |= required_features;
         self
     }
     pub(crate) fn from_pushable(id: impl Into<MissingValue>, pushable: Pushable<R>) -> Self {
         Self {
-            dependencies: vec![],
+            meta: Default::default(),
             inner: Ok(InnerMachine::Pushable(id.into(), pushable)),
-            actions: vec![],
         }
     }
     pub(crate) fn from_task<T>(task: T, pushable: TaskPushable<T, R>) -> Self
@@ -107,17 +123,15 @@ impl<R> Machine<R> {
         T: SpecificTaskRequest,
     {
         Self {
-            dependencies: vec![],
-            actions: vec![],
+            meta: Default::default(),
             inner: Ok(InnerMachine::OnTask((task, pushable).into())),
         }
     }
 
     pub fn from_final(v: R) -> Self {
         Self {
-            dependencies: vec![],
+            meta: Default::default(),
             inner: Ok(InnerMachine::Final(v)),
-            actions: vec![],
         }
     }
 }
@@ -131,9 +145,8 @@ impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
     }
     pub(super) fn from_err(err: Either<cerr, FatalError>) -> Self {
         Self {
-            dependencies: vec![],
+            meta: Default::default(),
             inner: err.map_left(InnerMachine::Catchable).flip().into(),
-            actions: vec![],
         }
         .maybe_merge_catchable()
     }
@@ -171,14 +184,9 @@ impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
             }
             Ok(InnerMachine::Final(r)) => {
                 let new_machine = closure(r);
-                let (mut dependencies, mut actions) = (self.dependencies, self.actions);
-                let inner = new_machine.inner;
-                dependencies.extend(new_machine.dependencies);
-                actions.extend(new_machine.actions);
                 return Machine {
-                    dependencies,
-                    inner,
-                    actions,
+                    inner: new_machine.inner,
+                    meta: self.meta.extended_with(new_machine.meta),
                 };
             }
             Ok(InnerMachine::OnTask(on_task)) => {
@@ -188,8 +196,7 @@ impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
             Err(err) => Err(err),
         };
         Machine {
-            dependencies: self.dependencies,
-            actions: self.actions,
+            meta: self.meta,
             inner: new_inner,
         }
     }
@@ -208,8 +215,7 @@ impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
             Err(err) => Err(err),
         };
         Machine {
-            dependencies: self.dependencies,
-            actions: self.actions,
+            meta: self.meta,
             inner: new_inner,
         }
     }
@@ -236,8 +242,7 @@ impl<R: From<cerr>> Machine<R> {
 impl<R> From<FatalError> for Machine<R> {
     fn from(err: FatalError) -> Machine<R> {
         Machine {
-            dependencies: vec![],
-            actions: vec![],
+            meta: Default::default(),
             inner: Err(err),
         }
     }

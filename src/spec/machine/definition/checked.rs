@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use crate::spec::{
     Entity, EntityId, RuntimeAction, RuntimeAny, SpecificTaskRequest,
     machine::{
-        FatalError, Machine, MachineWith, MissingValue,
+        FatalError, Machine, MachineMeta, MachineWith, MissingValue,
         definition::{InnerMachine, TaskPushable},
     },
     runtime::ClarifiedCerrMerging,
@@ -31,7 +31,7 @@ impl<R> MachineWith<MissingValue, R> {
     pub fn call(self, any: Result<&RuntimeAny, FatalError>) -> Machine<R> {
         match self.machine.inner {
             Ok(InnerMachine::Pushable(_, closure)) => {
-                closure(any).continued_from(self.machine.dependencies, self.machine.actions)
+                closure(any).continued_from_meta(self.machine.meta)
             }
             _ => unreachable!(),
         }
@@ -53,8 +53,7 @@ where
     <T as SpecificTaskRequest>::MainOutput: 'static,
 {
     pub(super) fn into_task_specific(
-        deps: Vec<EntityId<Entity>>,
-        actions: Vec<RuntimeAction>,
+        meta: MachineMeta,
         task: T,
         closure: TaskPushable<T, R>,
     ) -> Self {
@@ -63,7 +62,7 @@ where
             closure: Box::new({
                 move |out| {
                     let new_machine = closure(out).maybe_merge_catchable();
-                    new_machine.continued_from(deps, actions)
+                    new_machine.continued_from_meta(meta)
                 }
             }),
         }

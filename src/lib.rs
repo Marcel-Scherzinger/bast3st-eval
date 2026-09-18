@@ -4,6 +4,8 @@ pub mod catchable;
 pub mod evaluation;
 pub mod spec;
 
+pub use evaluation::Features;
+
 #[cfg(test)]
 mod tests {
     use crate::{
@@ -26,7 +28,9 @@ mod tests {
             .map(|x| RuntimeValue::Prim(spec::PrimitiveValue::Str(x.to_string().into())))
             .collect();
         let selectable = SelectableData::new(output);
-        let mut eval = evaluation::SingleEvaluation::new(entities, 13, &selectable).unwrap();
+        let mut eval =
+            evaluation::SingleEvaluation::new(entities, 13.into(), &selectable, Features::all())
+                .unwrap();
         eval.run_to_end().await;
         panic!(
             "{:?} {:#?}\n\n\n{entities:#?}",

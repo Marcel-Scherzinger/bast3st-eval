@@ -8,9 +8,10 @@ pub use normal::*;
 pub use on_task::OnTask;
 
 use crate::{
+    Features,
     catchable::cerr,
     spec::{
-        Entity, EntityId, RuntimeAction, Text,
+        Entity, EntityId, RuntimeAction, Selector, Text,
         runtime::{CompiledRegex, NetworkRequest, SpecificTaskRequest},
     },
 };
@@ -22,8 +23,7 @@ type TaskPushable<T, R> = Box<
     dyn for<'a> FnOnce(std::borrow::Cow<'a, <T as SpecificTaskRequest>::MainOutput>) -> Machine<R>,
 >;
 
-pub type Finished<R> =
-    Result<Result<(R, (Vec<EntityId<Entity>>, Vec<RuntimeAction>)), cerr>, FatalError>;
+pub type Finished<R> = Result<Result<(R, MachineMeta), cerr>, FatalError>;
 
 #[derive(Debug)]
 pub struct MachineWith<Status, R> {
@@ -40,6 +40,12 @@ pub enum UnfinishedMachine<R> {
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub enum FatalError {
-    EntityNotFound(u64),
+    EntityNotFound(EntityId),
     UnknownViewPerspective(Text),
+    FeatureMissmatch {
+        required: Features,
+        provided: Features,
+    },
+    RequestedSelectorValueNotAvailable(Selector),
+    CyclicIdReferences(EntityId),
 }
