@@ -1,10 +1,13 @@
-use derive_more::{Debug, Deref};
+use derive_more::{Debug, Deref, Display};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Deref)]
+use crate::spec::Entity;
+
+#[derive(Debug, Display, Serialize, Deserialize, Deref)]
 #[serde(from = "u64", into = "u64")]
 #[debug("EntityId<{}>({_0})", std::any::type_name::<T>().split("::").last().unwrap_or_default())]
-pub struct EntityId<T>(#[deref] pub(super) u64, std::marker::PhantomData<T>);
+#[display("{_0}")]
+pub struct EntityId<T = Entity>(#[deref] pub(super) u64, std::marker::PhantomData<T>);
 
 impl<T> Clone for EntityId<T> {
     fn clone(&self) -> Self {
@@ -42,6 +45,9 @@ impl<T> From<EntityId<T>> for u64 {
 }
 
 impl<T> EntityId<T> {
+    pub fn new(id: u64) -> Self {
+        Self::from(id)
+    }
     pub(super) fn _cast_id<U>(self) -> EntityId<U> {
         EntityId(self.0, Default::default())
     }
