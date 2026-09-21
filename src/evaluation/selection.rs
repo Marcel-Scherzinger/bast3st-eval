@@ -4,6 +4,17 @@ use crate::{
 };
 
 pub trait SelectableSource {
+    fn enforce_required(required: Features, provided: Features) -> Result<(), FatalError> {
+        if provided.contains(required) {
+            Ok(())
+        } else {
+            Err(FatalError::FeatureMissmatch { required, provided })
+        }
+    }
+    fn mark_fallback_need<O>(selector: Selector) -> Result<O, FatalError> {
+        Err(FatalError::RequestedSelectorValueNotAvailable(selector))
+    }
+
     /// This is a way to request the value for a selector
     /// and explicitly state which [`Features`] are allowed for the
     /// specific evaluation at hand
@@ -22,6 +33,8 @@ impl SelectableSource for () {
         selector: &Selector,
         allowed_features: Features,
     ) -> Result<&'a RuntimeAny, FatalError> {
-        Err(FatalError::RequestedSelectorValueNotAvailable(*selector))
+        Err(FatalError::RequestedSelectorValueNotAvailable(
+            selector.clone(),
+        ))
     }
 }

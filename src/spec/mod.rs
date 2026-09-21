@@ -7,7 +7,8 @@ mod structure;
 
 use std::{cmp::Ordering, sync::Arc};
 
-use derive_more::{Deref, From};
+use derive_more::{Deref, From, Into};
+use scratch_test_value::{SNumber, SValue};
 use serde::{Deserialize, Serialize};
 
 pub use entities::*;
@@ -27,6 +28,27 @@ pub enum PrimitiveValue {
     Str(Text),
     #[debug("{_0}")]
     Number(Numeric),
+}
+
+impl PrimitiveValue {
+    pub fn into_svalue(self) -> scratch_test_value::SValue {
+        match self {
+            Self::Str(t) => scratch_test_value::SValue::Text(t.into()),
+            Self::Number(x) => scratch_test_value::SValue::from(x),
+        }
+    }
+}
+
+impl From<SValue> for PrimitiveValue {
+    fn from(value: SValue) -> Self {
+        match value {
+            SValue::Int(x) => Self::Number(SNumber::Int(x)),
+            SValue::Float(x) => Self::Number(SNumber::Float(x)),
+            SValue::Text(x) => Self::Str(x.into()),
+            SValue::Bool(true) => Self::Number(SNumber::Int(1)),
+            SValue::Bool(false) => Self::Number(SNumber::Int(0)),
+        }
+    }
 }
 
 impl PartialEq for PrimitiveValue {
@@ -80,6 +102,7 @@ pub type Numeric = scratch_test_value::SNumber;
     Eq,
     Ord,
     From,
+    Into,
     Hash,
 )]
 #[debug("{_0:?}")]

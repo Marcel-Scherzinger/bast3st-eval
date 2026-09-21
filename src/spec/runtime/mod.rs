@@ -73,6 +73,7 @@ where
         Self::Prim(value.into())
     }
 }
+
 impl From<MappingOrArray> for RuntimeValue {
     fn from(value: MappingOrArray) -> Self {
         Self::Comp(value)
@@ -92,5 +93,16 @@ impl From<RealMapping> for RuntimeValue {
 impl From<u16> for PrimitiveValue {
     fn from(value: u16) -> Self {
         Self::Number(Numeric::Int(value.into()))
+    }
+}
+
+impl From<RealMapping> for RuntimeAny {
+    fn from(value: RealMapping) -> Self {
+        Self::Value(value.into())
+    }
+}
+impl From<Array> for RuntimeAny {
+    fn from(value: Array) -> Self {
+        Self::Value(value.into())
     }
 }

@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, default};
 
+use derive_getters::Getters;
 use serde::{Deserialize, Serialize};
 
 use crate::spec::{
@@ -40,7 +41,7 @@ pub struct AlternativeTest {
     general: GeneralTest<AlternativeTestHooks>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Getters)]
 pub struct GeneralTest<Hooks> {
     title: String,
     criterion: EntityId<CriterionEntity>,
@@ -52,6 +53,17 @@ pub struct GeneralTest<Hooks> {
     initial_lists: Option<BTreeMap<String, Vec<PrimitiveValue>>>,
     #[serde(default)]
     hooks: Hooks,
+}
+
+impl AsRef<GeneralTest<MainTestHooks>> for MainTest {
+    fn as_ref(&self) -> &GeneralTest<MainTestHooks> {
+        &self.general
+    }
+}
+impl AsRef<GeneralTest<AlternativeTestHooks>> for AlternativeTest {
+    fn as_ref(&self) -> &GeneralTest<AlternativeTestHooks> {
+        &self.general
+    }
 }
 
 impl Bast3StSpec {

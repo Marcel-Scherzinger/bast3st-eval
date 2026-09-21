@@ -1,8 +1,13 @@
 mod features;
+mod process_test;
+mod sel_fal;
 mod selection;
+mod sources;
 
 pub use features::{Features, RequiredFeatures};
+pub use sel_fal::SelFal;
 pub use selection::SelectableSource;
+pub use sources::*;
 
 use std::{borrow::Cow, collections::BTreeMap};
 

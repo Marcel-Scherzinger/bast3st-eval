@@ -64,19 +64,16 @@ impl ActionEntity {
                     }
                     .into()
                 })
-                .require_features(level.required_features())
             }
             Self::EndThisTest { mode, explaination } => {
                 let mode = *mode;
-                explaination
-                    .query(move |explaination: PrimitiveValue| {
-                        RuntimeAction::EndThisTest {
-                            mode,
-                            explaination: explaination.into_text(),
-                        }
-                        .into()
-                    })
-                    .require_features(Features::END_THIS_TEST)
+                explaination.query(move |explaination: PrimitiveValue| {
+                    RuntimeAction::EndThisTest {
+                        mode,
+                        explaination: explaination.into_text(),
+                    }
+                    .into()
+                })
             }
             Self::IfThenElse { if_, then_, else_ } => {
                 let (then_, else_) = (*then_, *else_);
@@ -96,6 +93,17 @@ impl ActionEntity {
                     .into()
                 })
             }
+        }
+        .require_features(self.required_features())
+    }
+}
+
+impl RequiredFeatures for ActionEntity {
+    fn required_features(&self) -> Features {
+        match self {
+            Self::SendMsg { level, .. } => level.required_features(),
+            Self::EndThisTest { .. } => Features::END_THIS_TEST,
+            Self::SetFlag { .. } | Self::IfThenElse { .. } => Features::empty(),
         }
     }
 }

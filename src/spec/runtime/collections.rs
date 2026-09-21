@@ -3,6 +3,7 @@ use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
 use bitflags::iter::IterNames;
 use derive_more::From;
 use either::Either;
+use scratch_test_value::SList;
 
 use crate::{
     catchable::cerr,
@@ -137,5 +138,11 @@ impl From<BTreeMap<MapKey, RuntimeValue>> for RealMapping {
 impl From<Vec<RuntimeValue>> for Array {
     fn from(value: Vec<RuntimeValue>) -> Self {
         Self(value.into())
+    }
+}
+
+impl From<SList> for Array {
+    fn from(value: SList) -> Self {
+        value.into_iter().map(RuntimeValue::from).collect()
     }
 }

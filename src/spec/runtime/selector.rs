@@ -7,7 +7,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
 pub enum Selector {
     Input,
     Output,
@@ -20,14 +20,15 @@ pub enum Selector {
 }
 
 impl Selector {
-    pub fn std_machine<Out>(&self) -> Machine<RuntimeValue>
+    pub fn std_machine<Out>(self) -> Machine<RuntimeValue>
     where
         Self: PossibleRuntimeValue<Out>,
         Out: SpecializeFrom,
         RuntimeValue: From<Out>,
     {
+        let required = self.required_features();
         self.query(|x: Out| Machine::from_final(RuntimeValue::from(x)))
-            .require_features(self.required_features())
+            .require_features(required)
     }
 }
 
