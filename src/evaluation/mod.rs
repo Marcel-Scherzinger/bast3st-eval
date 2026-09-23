@@ -10,3 +10,7 @@ pub use context::Context;
 pub use features::{Features, RequiredFeatures};
 pub use selectable::*;
 pub use single_evaluation::{EntryPointMissing, SingleEvaluation, SingleEvaluationError};
+
+pub use testrun2selectable::{
+    ActualTestResult, ActualTestResultEval, FatalRunError, JustFailTestRunError,
+};
