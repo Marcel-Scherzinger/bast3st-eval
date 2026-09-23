@@ -2,6 +2,8 @@ mod sel_fal;
 mod source_flagdata;
 mod source_rundata;
 
+use std::borrow::Cow;
+
 pub use crate::evaluation::features::RequiredFeatures;
 
 pub use sel_fal::*;
@@ -32,7 +34,7 @@ pub trait SelectableSource {
         &'a self,
         selector: &Selector,
         allowed_features: Features,
-    ) -> impl Future<Output = Result<&'a RuntimeAny, FatalError>>;
+    ) -> impl Future<Output = Result<Cow<'a, RuntimeAny>, FatalError>>;
 }
 
 /// `()` can be used as a fallback [`SelectableSource`] that always returns
@@ -42,7 +44,7 @@ impl SelectableSource for () {
         &'a self,
         selector: &Selector,
         allowed_features: Features,
-    ) -> Result<&'a RuntimeAny, FatalError> {
+    ) -> Result<Cow<'a, RuntimeAny>, FatalError> {
         Err(FatalError::RequestedSelectorValueNotAvailable(
             selector.clone(),
         ))

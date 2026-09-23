@@ -81,8 +81,51 @@ impl RealMapping {
             .or(self.default.as_deref())
             .ok_or(cerr::collection_valueNotFound)
     }
+    /// Ok(None) means self (empty key)
+    pub fn get_by_seq<'a, 'k>(
+        &'a self,
+        key: impl IntoIterator<Item = &'k MapKey>,
+    ) -> Result<Option<&'a RuntimeValue>, cerr> {
+        let mut key = key.into_iter();
+        if let Some(first) = key.next() {
+            let mut curr = self.get(first)?;
+            for k in key {
+                if let RuntimeValue::Comp(coll) = curr {
+                    curr = coll.get(k)?;
+                } else {
+                    return Err(cerr::typing_notCollection);
+                }
+            }
+            Ok(Some(curr))
+        } else {
+            Ok(None)
+        }
+    }
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+    pub fn iter(&self) -> impl Iterator<Item = (&MapKey, &RuntimeValue)> {
+        self.mapping.iter()
+    }
+    pub fn with_append(&self, mut map: BTreeMap<MapKey, RuntimeValue>) -> RealMapping {
+        let mut out: BTreeMap<MapKey, RuntimeValue> = self.mapping.as_ref().clone();
+        out.append(&mut map);
+        RealMapping {
+            mapping: out.into(),
+            default: self.default.clone(),
+        }
+    }
+
+    pub fn extended_with<E>(&self, other: impl IntoIterator<Item = E>) -> RealMapping
+    where
+        BTreeMap<MapKey, RuntimeValue>: Extend<E>,
+    {
+        let mut out: BTreeMap<MapKey, RuntimeValue> = self.mapping.as_ref().clone();
+        out.extend(other);
+        RealMapping {
+            mapping: out.into(),
+            default: self.default.clone(),
+        }
     }
 }
 impl Array {

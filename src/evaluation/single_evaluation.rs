@@ -157,7 +157,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
     async fn get_selector_value(
         &mut self,
         selector: &Selector,
-    ) -> Result<&'s RuntimeAny, FatalError> {
+    ) -> Result<Cow<'s, RuntimeAny>, FatalError> {
         self.selectable
             .request(selector, self.allowed_features)
             .await
@@ -219,7 +219,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
                             self.used_features |= selector.required_features();
                             self.check_features()?;
                             let val = self.get_selector_value(selector).await?;
-                            m.call(Ok(val))
+                            m.call(Ok(val.as_ref()))
                         }
                     };
                     self.machines.insert(current, new_machine);

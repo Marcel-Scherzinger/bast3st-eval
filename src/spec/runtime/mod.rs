@@ -26,7 +26,7 @@ use crate::{
     spec::{MapKey, PrimitiveValue},
 };
 
-#[derive(Debug, Clone, From)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, From)]
 pub enum RuntimeAny<E = cerr> {
     #[from]
     Criterion(RuntimeCriterion),
@@ -113,5 +113,14 @@ impl From<RealMapping> for RuntimeAny {
 impl From<Array> for RuntimeAny {
     fn from(value: Array) -> Self {
         Self::Value(value.into())
+    }
+}
+
+pub trait IntoRuntimeAny {
+    fn into_runtimeany(self) -> RuntimeAny;
+}
+impl<T: Into<RuntimeAny>> IntoRuntimeAny for Result<T, cerr> {
+    fn into_runtimeany(self) -> RuntimeAny {
+        self.map_or_else(RuntimeAny::Catchable, |x| x.into())
     }
 }

@@ -21,7 +21,7 @@ impl<'f, D: SelectableSource, F: SelectableSource + Clone> SelectableSource for 
         &'a self,
         selector: &crate::spec::Selector,
         allowed_features: Features,
-    ) -> Result<&'a crate::spec::RuntimeAny, crate::spec::FatalError> {
+    ) -> Result<Cow<'a, crate::spec::RuntimeAny>, crate::spec::FatalError> {
         match self.data.request(selector, allowed_features).await {
             Err(FatalError::RequestedSelectorValueNotAvailable(_)) => {
                 self.fallback.request(selector, allowed_features).await

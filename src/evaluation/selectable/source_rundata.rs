@@ -46,10 +46,10 @@ impl SelectableSource for Rundata {
         &'a self,
         selector: &crate::spec::Selector,
         allowed_features: Features,
-    ) -> Result<&'a crate::spec::RuntimeAny, crate::spec::FatalError> {
+    ) -> Result<Cow<'a, crate::spec::RuntimeAny>, crate::spec::FatalError> {
         Self::enforce_required(Features::READ_RUNDATA, allowed_features)?;
 
-        Ok(match selector {
+        Ok(Cow::Borrowed(match selector {
             Selector::Coremap(mapping) => match mapping {
                 Coremapping::Input => &self.input,
                 Coremapping::Variables => &self.variables,
@@ -61,6 +61,6 @@ impl SelectableSource for Rundata {
                 }
             },
             Selector::CoremapItem { .. } => Self::mark_fallback_need(selector.clone())?,
-        })
+        }))
     }
 }
