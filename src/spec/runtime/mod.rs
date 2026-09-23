@@ -13,10 +13,8 @@ use bitflags::iter::IterNames;
 pub use collections::{Array, MappingOrArray, RealMapping};
 use derive_more::{Deref, From};
 use either::Either;
-pub use marker::MachineReturnVal;
-pub(super) use marker::{
-    CheapBorrowFromAny, ClarifiedCerrMerging, PossibleRuntimeValue, SpecializeFrom,
-};
+pub(super) use marker::{CheapBorrowFromAny, ClarifiedCerrMerging, PossibleRuntimeValue};
+pub(crate) use marker::{MachineReturnVal, SpecializeFrom};
 pub use network::{InnerNetworkRequest, NetworkRequest, NetworkResponse};
 pub use selector::Selector;
 use serde_json::Map;
@@ -29,11 +27,21 @@ use crate::{
 };
 
 #[derive(Debug, Clone, From)]
-pub enum RuntimeAny {
+pub enum RuntimeAny<E = cerr> {
+    #[from]
     Criterion(RuntimeCriterion),
+    #[from]
     Action(RuntimeAction),
+    #[from]
     Value(RuntimeValue),
-    Catchable(cerr),
+    Catchable(E),
+}
+pub type RuntimeAnyWithoutCerr = RuntimeAny<std::convert::Infallible>;
+
+impl From<cerr> for RuntimeAny {
+    fn from(value: cerr) -> Self {
+        Self::Catchable(value)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, From, Default)]
@@ -59,8 +67,9 @@ impl<T> MaybeEval<T> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(derive_more::Debug, Clone, PartialEq, PartialOrd)]
 pub enum RuntimeValue {
+    #[debug("Prim({_0:?})")]
     Prim(PrimitiveValue),
     Comp(MappingOrArray),
 }

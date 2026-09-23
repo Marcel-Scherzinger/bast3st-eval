@@ -27,7 +27,7 @@ pub struct Category {
     #[serde(default)]
     tests: Vec<MainTest>,
 }
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Getters)]
 pub struct MainTest {
     #[serde(flatten)]
     general: GeneralTest<MainTestHooks>,
@@ -35,7 +35,7 @@ pub struct MainTest {
     alternative_tests: Vec<AlternativeTest>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Getters)]
 pub struct AlternativeTest {
     #[serde(flatten)]
     general: GeneralTest<AlternativeTestHooks>,

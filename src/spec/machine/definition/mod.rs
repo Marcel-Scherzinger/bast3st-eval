@@ -38,14 +38,19 @@ pub enum UnfinishedMachine<R> {
     RegexTask(MachineWithTask<CompiledRegex, R>),
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, thiserror::Error)]
 pub enum FatalError {
+    #[error("referenced entity {_0} not in store")]
     EntityNotFound(EntityId),
+    #[error("collection view requested unknown perspective {_0}")]
     UnknownViewPerspective(Text),
+    #[error("evaluation required more features ({required:?}) than provided ({provided:?})")]
     FeatureMissmatch {
         required: Features,
         provided: Features,
     },
+    #[error("no value for selector {_0} available")]
     RequestedSelectorValueNotAvailable(Selector),
+    #[error("detected reference cycle of entity IDs containing {_0}")]
     CyclicIdReferences(EntityId),
 }

@@ -93,6 +93,7 @@ pub type Numeric = scratch_test_value::SNumber;
 
 #[derive(
     derive_more::Debug,
+    derive_more::Display,
     PartialEq,
     PartialOrd,
     Deref,

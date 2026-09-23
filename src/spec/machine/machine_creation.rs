@@ -18,7 +18,7 @@ pub trait MachineConstruction<E, RuntimeT>: Sized {
 
     fn query<R: ClarifiedCerrMerging + 'static>(
         self,
-        closure: impl for<'a> FnOnce(RuntimeT) -> Machine<R> + 'static,
+        closure: impl FnOnce(RuntimeT) -> Machine<R> + 'static,
     ) -> Machine<R>
     where
         RuntimeT: Clone,
