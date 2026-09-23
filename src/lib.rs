@@ -9,24 +9,23 @@ pub use evaluation::Features;
 #[cfg(test)]
 mod tests {
     use crate::{
-        evaluation::SelectableSource,
-        spec::{Array, Numeric, RuntimeAny, RuntimeValue},
+        Features,
+        evaluation::{SelectableSource, SingleEvaluation},
+        spec::{self, Array, Numeric, RuntimeAny, RuntimeValue},
     };
 
-    pub struct SelectableData {
-        output: RuntimeAny,
+    pub struct DummyData {
+        data: RuntimeAny,
     }
-    impl SelectableSource for SelectableData {
+    impl SelectableSource for DummyData {
         async fn request<'a>(
             &'a self,
             selector: &spec::Selector,
             allowed_features: Features,
         ) -> Result<&'a spec::RuntimeAny, spec::FatalError> {
-            return Ok(&self.output);
+            Ok(&self.data)
         }
     }
-
-    use super::*;
 
     #[tokio::test]
     async fn t() {
@@ -40,12 +39,11 @@ mod tests {
             .iter()
             .map(|x| RuntimeValue::Prim(spec::PrimitiveValue::Str(x.to_string().into())))
             .collect();
-        let selectable = SelectableData {
-            output: RuntimeAny::from(output),
+        let selectable = DummyData {
+            data: RuntimeAny::from(output),
         };
         let mut eval =
-            evaluation::SingleEvaluation::new(entities, 13.into(), &selectable, Features::all())
-                .unwrap();
+            SingleEvaluation::new(entities, 13.into(), &selectable, Features::all()).unwrap();
         let eval = eval.run_to_end().await;
         panic!(
             "{:?} {:#?}\n\n\n{entities:#?}",

@@ -1,9 +1,12 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::BTreeMap};
 
 use super::sel_fal::SelFal;
-use crate::spec::{Array, FatalError, RealMapping, RuntimeAny, Selector};
+use crate::spec::{
+    Array, Coremapping, FatalError, RealMapping, RuntimeAction, RuntimeAny, RuntimeValue, Selector,
+    SetFlagMode, Text,
+};
 
-use super::{Features, RequiredFeatures, SelectableSource};
+use super::{Features, SelectableSource};
 
 #[derive(Debug, Clone)]
 pub struct Rundata {
@@ -47,14 +50,17 @@ impl SelectableSource for Rundata {
         Self::enforce_required(Features::READ_RUNDATA, allowed_features)?;
 
         Ok(match selector {
-            Selector::Input => &self.input,
-            Selector::Output => &self.output,
-            Selector::Randoms => &self.randoms,
-            Selector::Lists => &self.lists,
-            Selector::Variables => &self.variables,
-            Selector::Param | Selector::Blockcount | Selector::Flags => {
-                Self::mark_fallback_need(selector.clone())?
-            }
+            Selector::Coremap(mapping) => match mapping {
+                Coremapping::Input => &self.input,
+                Coremapping::Variables => &self.variables,
+                Coremapping::Randoms => &self.randoms,
+                Coremapping::Output => &self.output,
+                Coremapping::Lists => &self.lists,
+                Coremapping::Flags | Coremapping::Param => {
+                    Self::mark_fallback_need(selector.clone())?
+                }
+            },
+            Selector::CoremapItem { .. } => Self::mark_fallback_need(selector.clone())?,
         })
     }
 }

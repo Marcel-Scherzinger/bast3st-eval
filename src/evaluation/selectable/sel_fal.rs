@@ -65,6 +65,9 @@ impl<'f, D, F: SelectableSource + Clone> SelFal<'f, D, F> {
     pub fn data(&self) -> &D {
         &self.data
     }
+    pub fn into_data(self) -> D {
+        self.data
+    }
 
     pub fn new_ref(data: D, fallback: &'f F) -> Self {
         Self {
@@ -102,6 +105,18 @@ impl<'f, D, F: SelectableSource + Clone> SelFal<'f, D, F> {
             data: self.data.clone(),
         }
     }
+
+    pub fn map_data<X>(self, closure: impl FnOnce(D) -> X) -> SelFal<'f, X, F> {
+        SelFal {
+            data: closure(self.data),
+            fallback: self.fallback,
+        }
+    }
+
+    pub fn mutate_data(&mut self, closure: impl FnOnce(&mut D)) {
+        closure(&mut self.data)
+    }
+
     pub fn change_ref_fallback<'g, G: SelectableSource + Clone>(
         self,
         other_fallback: &'g G,

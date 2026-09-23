@@ -28,6 +28,12 @@ bitflags::bitflags! {
         const PermittedFEAT_PassTestCrit =
               Self::PermittedFEAT_TestScope.0
             | Self::END_THIS_TEST.0;
+        const PermittedFEAT_PreTestHook =
+              Self::END_THIS_TEST.0
+            | Self::SENDMSG_SPEC.0
+            | Self::SENDMSG_CATEGORY.0
+            | Self::SENDMSG_MAINTEST.0
+            | Self::SENDMSG_THISTEST.0;
     }
 }
 

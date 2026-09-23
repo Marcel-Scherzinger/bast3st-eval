@@ -1,3 +1,13 @@
+mod sel_fal;
+mod source_flagdata;
+mod source_rundata;
+
+pub use crate::evaluation::features::RequiredFeatures;
+
+pub use sel_fal::*;
+pub use source_flagdata::*;
+pub use source_rundata::*;
+
 use crate::{
     evaluation::features::Features,
     spec::{FatalError, RuntimeAny, Selector},
@@ -26,7 +36,7 @@ pub trait SelectableSource {
 }
 
 /// `()` can be used as a fallback [`SelectableSource`] that always returns
-/// `Err(`[`FatalError::RequestedSelectorValueNotAvailable`]`)`
+/// `Err(`[`FatalError::RequestedSelectorValueNotAvailable`]`(selector.clone()))`
 impl SelectableSource for () {
     async fn request<'a>(
         &'a self,

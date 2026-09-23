@@ -1,13 +1,11 @@
+mod context;
 mod features;
 mod process_test;
-mod sel_fal;
-mod selection;
-mod sources;
+mod selectable;
 
+pub use context::Context;
 pub use features::{Features, RequiredFeatures};
-pub use sel_fal::SelFal;
-pub use selection::SelectableSource;
-pub use sources::*;
+pub use selectable::*;
 
 use std::{borrow::Cow, collections::BTreeMap};
 
@@ -18,32 +16,10 @@ use crate::{
     spec::{
         Array, Entity, EntityId, FatalError, Machine, MissingValue, NetworkRequest,
         NetworkResponse, Numeric, RuntimeAction, RuntimeAny, RuntimeValue, Selector,
-        UnfinishedMachine,
+        SpecializeFrom, UnfinishedMachine,
     },
 };
 
-pub struct SelectableData {
-    output: RuntimeAny,
-}
-
-impl SelectableData {
-    pub fn new(output: Array) -> Self {
-        Self {
-            output: RuntimeAny::Value(output.into()),
-        }
-    }
-}
-
-impl SelectableSource for SelectableData {
-    async fn request<'a>(
-        &'a self,
-        selector: &Selector,
-        feat: Features,
-    ) -> Result<&'a RuntimeAny, FatalError> {
-        log::info!("Requested:  {selector:?}");
-        Ok(&self.output)
-    }
-}
 
 pub struct SingleEvaluation<'e, 's, S> {
     entities: &'e BTreeMap<EntityId, Entity>,
