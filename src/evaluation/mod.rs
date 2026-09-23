@@ -1,6 +1,6 @@
 mod context;
 mod features;
-mod process_single_hook;
+mod process_hook;
 mod process_test;
 mod selectable;
 mod single_evaluation;
@@ -14,3 +14,5 @@ pub use single_evaluation::{EntryPointMissing, SingleEvaluation, SingleEvaluatio
 pub use testrun2selectable::{
     ActualTestResult, ActualTestResultEval, FatalRunError, JustFailTestRunError,
 };
+
+pub use process_hook::{HookFailure, HookResult};
