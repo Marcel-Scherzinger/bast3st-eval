@@ -12,7 +12,7 @@ use crate::{
     Features,
     evaluation::{
         Context, Rundata, SelectableSource, SingleEvaluation, SingleEvaluationError,
-        TestRundataSource,
+        TestRundataSource, single_evaluation::StopEval,
     },
     spec::{
         Array, Entity, EntityId, GeneralTest, MapKey, PrimitiveValue, RuntimeAction,
@@ -20,7 +20,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, Clone, PartialEq, PartialOrd)]
 pub enum FatalRunError {
     #[error("runerror-file: {_0}")]
     File(#[from] scratch_test_interpreter::error::InvalidFileError),
@@ -33,7 +33,7 @@ pub enum FatalRunError {
 /// An error that indicates that something didn't work out as expected with the
 /// users submission, but it is not as severe as a [`FatalRunError`] and it will
 /// be counted as a failed test without checking the criterion at all.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, PartialEq, PartialOrd, Clone)]
 pub enum JustFailTestRunError {
     #[error("runerror-user: {_0}")]
     User(#[from] UserError),
@@ -45,12 +45,15 @@ pub enum JustFailTestRunError {
 
 pub type ActualTestResultEval = (
     Vec<RuntimeAction>,
-    Result<RuntimeCriterion, SingleEvaluationError>,
+    Result<Either<StopEval, RuntimeCriterion>, SingleEvaluationError>,
 );
+pub type ActualTestResultStatus =
+    Either<ActualTestResultEval, Result<JustFailTestRunError, FatalRunError>>;
 
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct ActualTestResult {
-    status: Either<ActualTestResultEval, Result<JustFailTestRunError, FatalRunError>>,
-    testdata: Rundata,
+    pub(crate) status: ActualTestResultStatus,
+    pub(crate) testdata: Rundata,
 }
 
 impl ActualTestResult {
@@ -110,8 +113,9 @@ pub(crate) async fn run_actual_test<'f, Hooks, Fallback: SelectableSource + Clon
         features,
     ) {
         Ok(eval) => {
-            let eval = eval.run_to_end().await;
-            let value: Result<RuntimeCriterion, SingleEvaluationError> = eval.one_specialized();
+            let eval = eval.run_to_end_with_early_return().await;
+            let value: Result<Either<StopEval, RuntimeCriterion>, SingleEvaluationError> =
+                eval.one_specialized();
             ActualTestResult {
                 status: Either::Left((eval.into_actions(), value)),
                 testdata: testdata_source.into_data(),

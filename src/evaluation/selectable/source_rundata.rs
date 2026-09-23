@@ -8,7 +8,7 @@ use crate::spec::{
 
 use super::{Features, SelectableSource};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Rundata {
     input: RuntimeAny,     // Array
     output: RuntimeAny,    // Array
