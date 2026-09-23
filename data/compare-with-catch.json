@@ -12852,8 +12852,8 @@
   "hooks": {
     "before-all-categories": [
       [
-        21,
-        23
+        20,
+        22
       ]
     ]
   },
@@ -12947,31 +12947,30 @@
       "fexp": 10
     },
     "18": {
-      "op": "read-blockcount"
-    },
-    "19": {
-      "op": "mapitem",
-      "m": 18,
+      "op": "cmapitem",
+      "m": "param",
       "k": [
+        "doc",
+        "blockcount",
         "total"
       ]
     },
-    "20": {
+    "19": {
       "op": "lit",
       "v": 30
     },
-    "21": {
+    "20": {
       "op": ">",
-      "l": 19,
-      "r": 20
+      "l": 18,
+      "r": 19
     },
-    "22": {
+    "21": {
       "op": "lit",
       "v": "Sie verwenden zu viele Bl\u00f6cke. Maximal erlaubt sind 30."
     },
-    "23": {
+    "22": {
       "op": "send-msg",
-      "t": 22,
+      "t": 21,
       "s": "error"
     }
   }

@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     catchable::cerr,
     spec::{
-        ActionEntity, CriterionEntity, EntityId, FatalError, MapKey, MappingOrArray, NetworkMethod,
-        Numeric, PrimitiveValue, RealMapping, RuntimeAction, Text, ValueReference,
+        ActionEntity, Coremapping, CriterionEntity, EntityId, FatalError, MapKey, MappingOrArray,
+        NetworkMethod, Numeric, PrimitiveValue, RealMapping, RuntimeAction, Text, ValueReference,
         machine::{Machine, MachineConstruction, MachineConstructionN},
         runtime::{
             Array, ClarifiedCerrMerging, CompiledRegex, NetworkRequest, NetworkResponse,
@@ -31,7 +31,7 @@ pub enum ValueEntity {
     ReadLists {},
     ReadVariables {},
     ReadRandoms {},
-    ReadBlockcount {},
+    ReadFlags {},
     ReadParam {},
 
     #[serde(rename = "network")]
@@ -52,6 +52,13 @@ pub enum ValueEntity {
         mapping: MappingReference,
     },
 
+    #[serde(rename = "cmapitem")]
+    CoremapItem {
+        #[serde(rename = "m")]
+        mapping: Coremapping,
+        #[serde(rename = "k")]
+        keys: Vec<ValueReference>,
+    },
     Mapitem {
         #[serde(rename = "m")]
         mapping: MappingReference,
@@ -195,13 +202,13 @@ impl ValueEntity {
                 .query_n(|left: Numeric, right: Numeric| val(left.q_sub_numbers(&right, &mut ()))),
             Self::Mul { left, right } => (left, right)
                 .query_n(|left: Numeric, right: Numeric| val(left.q_mul_numbers(&right, &mut ()))),
-            Self::ReadInput {} => Selector::Input.std_machine::<Array>(),
-            Self::ReadRandoms {} => Selector::Randoms.std_machine::<Array>(),
-            Self::ReadOutput {} => Selector::Output.std_machine::<Array>(),
-            Self::ReadParam {} => Selector::Param.std_machine::<RealMapping>(),
-            Self::ReadLists {} => Selector::Lists.std_machine::<RealMapping>(),
-            Self::ReadBlockcount {} => Selector::Blockcount.std_machine::<RealMapping>(),
-            Self::ReadVariables {} => Selector::Variables.std_machine::<RealMapping>(),
+            Self::ReadInput {} => Selector::INPUT.std_machine::<Array>(),
+            Self::ReadRandoms {} => Selector::RANDOMS.std_machine::<Array>(),
+            Self::ReadOutput {} => Selector::OUTPUT.std_machine::<Array>(),
+            Self::ReadParam {} => Selector::PARAM.std_machine::<RealMapping>(),
+            Self::ReadFlags {} => Selector::FLAGS.std_machine::<RealMapping>(),
+            Self::ReadLists {} => Selector::LISTS.std_machine::<RealMapping>(),
+            Self::ReadVariables {} => Selector::VARIABLES.std_machine::<RealMapping>(),
             Self::IfThenElse { if_, then_, else_ } => {
                 eval_flat_if_then_else(if_, then_.clone(), else_.clone())
             }
@@ -257,6 +264,10 @@ impl ValueEntity {
             Self::Mapitem { mapping, keys } => {
                 let reversed_keys = keys.iter().rev().cloned().collect();
                 mapping.query(|mapping| eval_mapitem(mapping, reversed_keys))
+            }
+            Self::CoremapItem { mapping, keys } => {
+                let reversed_keys = keys.iter().rev().cloned().collect();
+                eval_coremap_item(*mapping, reversed_keys, Default::default())
             }
             Self::Catch {
                 value,
@@ -453,6 +464,25 @@ fn eval_mapitem(
         })
     } else {
         Machine::from_final(current)
+    }
+}
+
+fn eval_coremap_item(
+    mapping: Coremapping,
+    mut reversed_keys: Vec<ValueReference>,
+    mut eval_keys: Vec<MapKey>,
+) -> Machine<RuntimeValue> {
+    if let Some(key) = reversed_keys.pop() {
+        key.query(move |key: MapKey| {
+            eval_keys.push(key);
+            eval_coremap_item(mapping, reversed_keys, eval_keys)
+        })
+    } else {
+        Selector::CoremapItem {
+            mapping,
+            key: eval_keys,
+        }
+        .std_machine::<RuntimeValue>()
     }
 }
 

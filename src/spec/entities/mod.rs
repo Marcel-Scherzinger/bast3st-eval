@@ -3,12 +3,12 @@ mod entity_criterion;
 mod entity_id;
 mod entity_value;
 
-use derive_more::From;
+use derive_more::{Display, From};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     evaluation::RequiredFeatures,
-    spec::{Machine, RuntimeAny, Text},
+    spec::{Machine, RuntimeAny, Selector, Text},
 };
 
 pub use entity_action::*;
@@ -87,4 +87,20 @@ impl RequiredFeatures for MessageSendingLevel {
             Self::Current => Features::empty(),
         }
     }
+}
+
+#[derive(
+    Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Clone, Copy,
+)]
+#[serde(rename_all = "kebab-case")]
+#[display(rename_all = "UPPERCASE")]
+pub enum Coremapping {
+    Input,
+    Output,
+    Lists,
+    #[display("VARS")]
+    Variables,
+    Randoms,
+    Flags,
+    Param,
 }

@@ -14,8 +14,8 @@
   "hooks": {
     "before-all-categories": [
       [
-        11,
-        12
+        10,
+        11
       ]
     ]
   },
@@ -57,25 +57,24 @@
       "sup": 6
     },
     "8": {
-      "op": "read-blockcount"
-    },
-    "9": {
-      "op": "mapitem",
-      "m": 8,
+      "op": "cmapitem",
+      "m": "param",
       "k": [
+        "doc",
+        "blockcount",
         "total"
       ]
     },
-    "10": {
+    "9": {
       "op": "lit",
       "v": 30
     },
-    "11": {
+    "10": {
       "op": ">",
-      "l": 9,
-      "r": 10
+      "l": 8,
+      "r": 9
     },
-    "12": {
+    "11": {
       "op": "send-msg",
       "t": "Sie verwenden zu viele Bl\u00f6cke",
       "s": "error"
