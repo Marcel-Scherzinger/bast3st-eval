@@ -29,7 +29,7 @@ pub enum ActionEntity {
     },
 
     SetFlag {
-        #[serde(rename = "m")]
+        #[serde(rename = "m", default)]
         mode: SetFlagMode,
         #[serde(rename = "k")]
         key: ValueReference,

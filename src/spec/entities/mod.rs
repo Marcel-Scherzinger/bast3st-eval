@@ -61,9 +61,12 @@ pub enum EndThisTestMode {
     Pass,
     Fail,
 }
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "kebab-case")]
+/// Currently, this has no function and carries no information
 pub enum SetFlagMode {
+    // mode="keep" is for now the only option, keeps the default visibility (public?)
+    #[default]
     Keep,
 }
 
