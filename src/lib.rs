@@ -8,6 +8,8 @@ pub use evaluation::Features;
 
 #[cfg(test)]
 mod tests {
+    use std::borrow::Cow;
+
     use crate::{
         Features,
         evaluation::{SelectableSource, SingleEvaluation},
@@ -22,8 +24,8 @@ mod tests {
             &'a self,
             selector: &spec::Selector,
             allowed_features: Features,
-        ) -> Result<&'a spec::RuntimeAny, spec::FatalError> {
-            Ok(&self.data)
+        ) -> Result<Cow<'a, spec::RuntimeAny>, spec::FatalError> {
+            Ok(Cow::Borrowed(&self.data))
         }
     }
 
@@ -44,7 +46,7 @@ mod tests {
         };
         let mut eval =
             SingleEvaluation::new(entities, 13.into(), &selectable, Features::all()).unwrap();
-        let eval = eval.run_to_end().await;
+        let eval = eval.run_to_end_with_early_return().await;
         panic!(
             "{:?} {:#?}\n\n\n{entities:#?}",
             eval.value(),

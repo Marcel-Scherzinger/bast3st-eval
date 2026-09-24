@@ -8,9 +8,9 @@ use crate::{
     catchable::cerr,
     evaluation::{RequiredFeatures, SelectableSource},
     spec::{
-        Array, EndThisTestMode, Entity, EntityId, FatalError, Machine, MissingValue,
-        NetworkRequest, NetworkResponse, Numeric, RuntimeAction, RuntimeAny, RuntimeValue,
-        Selector, SpecializeFrom, UnfinishedMachine,
+        Array, EndThisTestAction, EndThisTestMode, Entity, EntityId, FatalError, Machine,
+        MissingValue, NetworkRequest, NetworkResponse, Numeric, RuntimeAction, RuntimeAny,
+        RuntimeValue, Selector, SpecializeFrom, UnfinishedMachine,
     },
 };
 
@@ -246,11 +246,13 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
                             for action in meta.into_actions() {
                                 if let RuntimeAction::EndThisTest {
                                     mode,
-                                    explaination: _,
+                                    ref explaination,
                                 } = action
                                     && return_early.is_ok()
                                 {
-                                    return_early = Err(StopEval::EndTest(mode));
+                                    return_early = Err(StopEval::EndTest(
+                                        mode.action_with(explaination.clone()),
+                                    ));
                                 }
                                 self.actions.push(action);
                             }
@@ -315,5 +317,5 @@ pub enum AnyEvalTermination {
 #[derive(Debug, Display, PartialEq, From, Clone, PartialOrd)]
 pub enum StopEval {
     #[display("end-test: early return using {_0:?}")]
-    EndTest(EndThisTestMode),
+    EndTest(EndThisTestAction),
 }

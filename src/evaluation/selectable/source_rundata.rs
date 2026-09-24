@@ -1,6 +1,5 @@
 use std::{borrow::Cow, collections::BTreeMap};
 
-use super::sel_fal::SelFal;
 use crate::spec::{
     Array, Coremapping, FatalError, RealMapping, RuntimeAction, RuntimeAny, RuntimeValue, Selector,
     SetFlagMode, Text,
@@ -17,27 +16,21 @@ pub struct Rundata {
     variables: RuntimeAny, // RealMapping
 }
 
-pub type TestRundataSource<'f, Fallback> = SelFal<'f, Rundata, Fallback>;
-
-impl<'f, F: SelectableSource + Clone> TestRundataSource<'f, F> {
+impl Rundata {
     pub fn new(
         input: impl Into<Array>,
         output: impl Into<Array>,
         randoms: impl Into<Array>,
         lists: impl Into<RealMapping>,
         variables: impl Into<RealMapping>,
-        fallback: Cow<'f, F>,
     ) -> Self {
-        Self::new_cow(
-            Rundata {
-                input: input.into().into(),
-                output: output.into().into(),
-                randoms: randoms.into().into(),
-                lists: lists.into().into(),
-                variables: variables.into().into(),
-            },
-            fallback,
-        )
+        Rundata {
+            input: input.into().into(),
+            output: output.into().into(),
+            randoms: randoms.into().into(),
+            lists: lists.into().into(),
+            variables: variables.into().into(),
+        }
     }
 }
 

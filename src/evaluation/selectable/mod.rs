@@ -1,4 +1,5 @@
 mod sel_fal;
+mod sel_merge;
 mod source_flagdata;
 mod source_rundata;
 
@@ -7,6 +8,7 @@ use std::borrow::Cow;
 pub use crate::evaluation::features::RequiredFeatures;
 
 pub use sel_fal::*;
+pub use sel_merge::*;
 pub use source_flagdata::*;
 pub use source_rundata::*;
 
@@ -48,5 +50,25 @@ impl SelectableSource for () {
         Err(FatalError::RequestedSelectorValueNotAvailable(
             selector.clone(),
         ))
+    }
+}
+
+impl<A: SelectableSource> SelectableSource for &mut A {
+    async fn request<'z>(
+        &'z self,
+        selector: &crate::spec::Selector,
+        allowed_features: crate::Features,
+    ) -> Result<Cow<'z, crate::spec::RuntimeAny>, FatalError> {
+        <A as SelectableSource>::request(self, selector, allowed_features).await
+    }
+}
+
+impl<A: SelectableSource> SelectableSource for &A {
+    async fn request<'z>(
+        &'z self,
+        selector: &crate::spec::Selector,
+        allowed_features: crate::Features,
+    ) -> Result<Cow<'z, crate::spec::RuntimeAny>, FatalError> {
+        <A as SelectableSource>::request(self, selector, allowed_features).await
     }
 }

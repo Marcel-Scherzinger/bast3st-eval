@@ -1,6 +1,5 @@
 use std::{borrow::Cow, collections::BTreeMap};
 
-use super::sel_fal::SelFal;
 use crate::spec::{
     Array, Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
     RuntimeValue, Selector, SetFlagMode, Text,
@@ -8,7 +7,7 @@ use crate::spec::{
 
 use super::{Features, SelectableSource};
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct FlagData {
     flags: RuntimeAny, // RealMapping
 }
@@ -76,6 +75,11 @@ impl AsRef<RealMapping> for FlagData {
         }
     }
 }
+impl From<FlagData> for RealMapping {
+    fn from(value: FlagData) -> Self {
+        value.as_ref().clone()
+    }
+}
 
 impl SelectableSource for FlagData {
     async fn request<'a>(
@@ -115,5 +119,30 @@ impl<'a> Extend<&'a RuntimeAction> for FlagData {
             }
         });
         self.extend(actions);
+    }
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
+pub struct WithFlagData<T> {
+    data: T,
+    flags: FlagData,
+}
+impl<T> From<T> for WithFlagData<T> {
+    fn from(value: T) -> Self {
+        Self {
+            data: value,
+            flags: Default::default(),
+        }
+    }
+}
+impl<T> WithFlagData<T> {
+    pub fn with_flags(self, flags: FlagData) -> Self {
+        Self {
+            data: self.data,
+            flags,
+        }
+    }
+    pub fn into_parts(self) -> (T, FlagData) {
+        (self.data, self.flags)
     }
 }

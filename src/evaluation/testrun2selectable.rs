@@ -12,11 +12,11 @@ use crate::{
     Features,
     evaluation::{
         Context, Rundata, SelectableSource, SingleEvaluation, SingleEvaluationError,
-        TestRundataSource, single_evaluation::StopEval,
+        single_evaluation::StopEval,
     },
     spec::{
-        Array, Entity, EntityId, GeneralTest, MapKey, PrimitiveValue, RuntimeAction,
-        RuntimeCriterion, RuntimeValue, Text,
+        Array, EndThisTestAction, Entity, EntityId, GeneralTest, MapKey, PrimitiveValue,
+        RuntimeAction, RuntimeCriterion, RuntimeValue, Text,
     },
 };
 
@@ -57,29 +57,24 @@ pub struct ActualTestResult {
 }
 
 impl ActualTestResult {
-    pub async fn from_run<'f, Hooks, Fallback: SelectableSource + Clone>(
+    pub async fn from_run<Hooks, Source: SelectableSource>(
         settings: &Context<'_, '_>,
         test: &GeneralTest<Hooks>,
-        source: Cow<'f, Fallback>,
+        source: Source,
         features: Features,
     ) -> Self {
         run_actual_test(settings, test, source, features).await
     }
 }
 
-pub(crate) async fn run_actual_test<'f, Hooks, Fallback: SelectableSource + Clone>(
+pub(crate) async fn run_actual_test<Hooks, Source: SelectableSource>(
     settings: &Context<'_, '_>,
     test: &GeneralTest<Hooks>,
-    source: Cow<'f, Fallback>,
+    fallback: Source,
     features: Features,
 ) -> ActualTestResult {
-    let (testdata_source, _state, error, _limits) = run_single_test_for_selectable(
-        settings,
-        settings.doc(),
-        settings.initial_block(),
-        test,
-        source,
-    );
+    let (testdata, _state, error, _limits) =
+        run_single_test_for_selectable(settings, settings.doc(), settings.initial_block(), test);
 
     if let Some(error) = error {
         // some errors like infinite loops can be counted as immediate test failure,
@@ -100,7 +95,7 @@ pub(crate) async fn run_actual_test<'f, Hooks, Fallback: SelectableSource + Clon
         if let Some(error) = maybe_error.transpose() {
             return ActualTestResult {
                 status: Either::Right(error),
-                testdata: testdata_source.into_data(),
+                testdata,
             };
         }
     }
@@ -109,7 +104,7 @@ pub(crate) async fn run_actual_test<'f, Hooks, Fallback: SelectableSource + Clon
     match SingleEvaluation::new(
         settings.entities(),
         criterion.cast_id(),
-        &testdata_source,
+        &(&testdata, &fallback),
         features,
     ) {
         Ok(eval) => {
@@ -118,24 +113,23 @@ pub(crate) async fn run_actual_test<'f, Hooks, Fallback: SelectableSource + Clon
                 eval.one_specialized();
             ActualTestResult {
                 status: Either::Left((eval.into_actions(), value)),
-                testdata: testdata_source.into_data(),
+                testdata,
             }
         }
         Err(err) => ActualTestResult {
             status: Either::Left((Default::default(), Err(err.into()))),
-            testdata: testdata_source.into_data(),
+            testdata,
         },
     }
 }
 
-fn run_single_test_for_selectable<'f, Hooks, Fallback: SelectableSource + Clone>(
+fn run_single_test_for_selectable<Hooks>(
     settings: &Context,
     doc: &ProjectDoc,
     initial_block: &Id,
     general: &GeneralTest<Hooks>,
-    fallback: Cow<'f, Fallback>,
 ) -> (
-    TestRundataSource<'f, Fallback>,
+    Rundata,
     DefaultState,
     Option<RunError<DefaultStateError>>,
     Limits,
@@ -163,7 +157,7 @@ fn run_single_test_for_selectable<'f, Hooks, Fallback: SelectableSource + Clone>
     let report = interp.run(doc, state, initial_block);
     let (state, error, limits) = report.take_parts();
 
-    let rundata: TestRundataSource<'f, Fallback> = TestRundataSource::new(
+    let rundata = Rundata::new(
         state
             .answer_inputs()
             .iter()
@@ -197,7 +191,6 @@ fn run_single_test_for_selectable<'f, Hooks, Fallback: SelectableSource + Clone>
                 )
             })
             .collect::<BTreeMap<MapKey, RuntimeValue>>(),
-        fallback,
     );
     (rundata, state, error, limits)
 }

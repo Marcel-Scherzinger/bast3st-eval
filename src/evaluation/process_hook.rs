@@ -28,42 +28,45 @@ pub struct HookResult {
     pub(crate) actions: Vec<RuntimeAction>,
 }
 impl HookResult {
-    pub async fn from_pre_hook<Fallback: Clone + SelectableSource>(
+    pub async fn from_pre_hook<Source: SelectableSource>(
         context: &Context<'_, '_>,
-        outer_fallback: &Fallback,
+        source: Source,
         crit: EntityId<CriterionEntity>,
         act: EntityId<ActionEntity>,
     ) -> Result<HookResult, HookFailure> {
         execute_hook(
             context,
-            outer_fallback,
+            source,
             Features::PermittedFEAT_PreTestHook,
             crit,
             act,
         )
         .await
     }
-    pub async fn from_post_hook<Fallback: Clone + SelectableSource>(
+    pub async fn from_post_hook<Source: SelectableSource>(
         context: &Context<'_, '_>,
-        outer_fallback: &Fallback,
+        source: Source,
         crit: EntityId<CriterionEntity>,
         act: EntityId<ActionEntity>,
     ) -> Result<HookResult, HookFailure> {
         execute_hook(
             context,
-            outer_fallback,
+            source,
             Features::PermittedFEAT_PostTestHook,
             crit,
             act,
         )
         .await
     }
+    pub fn into_actions(self) -> Vec<RuntimeAction> {
+        self.actions
+    }
 }
 
 /// (Adds [`Features::END_THIS_TEST`] to given base features)
-pub(crate) async fn execute_hook<'p, 'e, 'f, Fallback: Clone + SelectableSource>(
+pub(crate) async fn execute_hook<'p, 'e, Source: SelectableSource>(
     settings: &Context<'p, 'e>,
-    outer_fallback: &'f Fallback,
+    outer_fallback: Source,
     base_features: Features,
     crit: EntityId<CriterionEntity>,
     act: EntityId<ActionEntity>,
@@ -74,7 +77,7 @@ pub(crate) async fn execute_hook<'p, 'e, 'f, Fallback: Clone + SelectableSource>
     let c_eval = SingleEvaluation::new(
         settings.entities(),
         crit.cast_id(),
-        outer_fallback,
+        &outer_fallback,
         base_features,
     )
     .map_err(SingleEvaluationError::from)
@@ -88,7 +91,7 @@ pub(crate) async fn execute_hook<'p, 'e, 'f, Fallback: Clone + SelectableSource>
         let a_eval = SingleEvaluation::new(
             settings.entities(),
             act.cast_id(),
-            outer_fallback,
+            &outer_fallback,
             base_features,
         )
         .map_err(SingleEvaluationError::from)

@@ -7,8 +7,8 @@ mod network;
 mod selector;
 mod tasks;
 
-pub use crate::spec::RuntimeAction;
 pub use crate::spec::runtime::criterion::{InnerRuntimeCriterion, RuntimeCriterion};
+pub use crate::spec::{EndThisTestAction, RuntimeAction};
 use bitflags::iter::IterNames;
 pub use collections::{Array, MappingOrArray, RealMapping};
 use derive_more::{Deref, From};

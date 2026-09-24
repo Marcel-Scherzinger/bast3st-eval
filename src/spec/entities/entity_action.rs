@@ -1,3 +1,4 @@
+use derive_getters::Getters;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -125,4 +126,57 @@ pub enum RuntimeAction {
         key: Text,
         value: PrimitiveValue,
     },
+}
+
+impl RuntimeAction {
+    pub fn into_processed(self) -> Option<ProcessedAction> {
+        Some(match self {
+            RuntimeAction::SendMsg {
+                text,
+                severity,
+                level,
+            } => ProcessedAction::SendMsg(SendMsgAction {
+                level,
+                severity,
+                text,
+            }),
+            Self::EndThisTest { .. } | Self::SetFlag { .. } => return None,
+        })
+    }
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
+pub struct EndThisTestAction {
+    mode: EndThisTestMode,
+    explaination: Text,
+}
+
+impl EndThisTestMode {
+    pub fn action_with(self, explaination: Text) -> EndThisTestAction {
+        EndThisTestAction {
+            mode: self,
+            explaination,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
+pub struct SendMsgAction {
+    level: MessageSendingLevel,
+    severity: MessageSeverity,
+    text: Text,
+}
+impl MessageSeverity {
+    pub fn action_with(self, level: MessageSendingLevel, text: Text) -> SendMsgAction {
+        SendMsgAction {
+            severity: self,
+            level,
+            text,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
+pub enum ProcessedAction {
+    SendMsg(SendMsgAction),
 }
