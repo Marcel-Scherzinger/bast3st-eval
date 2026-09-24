@@ -1,5 +1,6 @@
 mod sel_fal;
 mod sel_merge;
+mod source_effects;
 mod source_flagdata;
 mod source_rundata;
 
@@ -9,6 +10,7 @@ pub use crate::evaluation::features::RequiredFeatures;
 
 pub use sel_fal::*;
 pub use sel_merge::*;
+pub use source_effects::*;
 pub use source_flagdata::*;
 pub use source_rundata::*;
 

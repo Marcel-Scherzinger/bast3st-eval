@@ -33,7 +33,7 @@ pub enum ActionEntity {
         #[serde(rename = "m", default)]
         mode: SetFlagMode,
         #[serde(rename = "k")]
-        key: ValueReference,
+        key: Vec<ValueReference>,
         #[serde(rename = "v")]
         value: ValueReference,
     },
@@ -83,19 +83,37 @@ impl ActionEntity {
                         .query(|branch: RuntimeAction| branch.into())
                 })
             }
-            Self::SetFlag { mode, key, value } => {
-                let mode = mode.clone();
-                (key, value).query_n(move |key: MapKey, value: PrimitiveValue| {
-                    RuntimeAction::SetFlag {
-                        mode,
-                        key: key.into_text(),
-                        value,
-                    }
-                    .into()
-                })
-            }
+            Self::SetFlag { mode, key, value } => set_flag_act(
+                mode.clone(),
+                key.iter().rev().cloned().collect(),
+                vec![],
+                value.clone(),
+            ),
         }
         .require_features(self.required_features())
+    }
+}
+
+fn set_flag_act(
+    mode: SetFlagMode,
+    mut reversed_keys: Vec<ValueReference>,
+    mut eval_keys: Vec<MapKey>,
+    value: ValueReference,
+) -> Machine<RuntimeAction> {
+    if let Some(key) = reversed_keys.pop() {
+        key.query(move |key: MapKey| {
+            eval_keys.push(key);
+            set_flag_act(mode, reversed_keys, eval_keys, value)
+        })
+    } else {
+        value.query(move |value: PrimitiveValue| {
+            RuntimeAction::SetFlag {
+                mode,
+                key: eval_keys,
+                value,
+            }
+            .into()
+        })
     }
 }
 
@@ -123,14 +141,14 @@ pub enum RuntimeAction {
 
     SetFlag {
         mode: SetFlagMode,
-        key: Text,
+        key: Vec<MapKey>,
         value: PrimitiveValue,
     },
 }
 
 impl RuntimeAction {
-    pub fn into_processed(self) -> Option<ProcessedAction> {
-        Some(match self {
+    pub fn into_processed(self) -> Result<ProcessedAction, RuntimeAction> {
+        Ok(match self {
             RuntimeAction::SendMsg {
                 text,
                 severity,
@@ -140,7 +158,7 @@ impl RuntimeAction {
                 severity,
                 text,
             }),
-            Self::EndThisTest { .. } | Self::SetFlag { .. } => return None,
+            Self::EndThisTest { .. } | Self::SetFlag { .. } => return Err(self),
         })
     }
 }

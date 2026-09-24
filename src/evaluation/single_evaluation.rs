@@ -50,7 +50,9 @@ pub enum SingleEvaluationError<Extra: Display = std::convert::Infallible> {
 }
 
 impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationFinished> {
-    pub fn one_specialized<T: SpecializeFrom>(&self) -> Result<T, SingleEvaluationError<StopEval>> {
+    pub fn one_specialized<T: SpecializeFrom>(
+        &self,
+    ) -> Result<T, SingleEvaluationError<EvalSignal>> {
         match self.maybe_specialized_value::<T>() {
             Ok(Some(normal)) => Ok(normal.into_owned()),
             // This situation should never occur as `run_to_end` *should* compute
@@ -72,7 +74,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationFinished
 impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationFinishedOrCancelled> {
     pub fn one_specialized<T: SpecializeFrom>(
         &self,
-    ) -> Result<Either<StopEval, T>, SingleEvaluationError> {
+    ) -> Result<Either<EvalSignal, T>, SingleEvaluationError> {
         match self.maybe_specialized_value::<T>() {
             Ok(Some(normal)) => Ok(Either::Right(normal.into_owned())),
             // This situation should never occur as `run_to_end` *should* compute
@@ -250,7 +252,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
                                 } = action
                                     && return_early.is_ok()
                                 {
-                                    return_early = Err(StopEval::EndTest(
+                                    return_early = Err(EvalSignal::EndTest(
                                         mode.action_with(explaination.clone()),
                                     ));
                                 }
@@ -311,11 +313,11 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
 #[derive(Debug, PartialEq, From, Clone)]
 pub enum AnyEvalTermination {
     Fatal(FatalError),
-    End(StopEval),
+    End(EvalSignal),
 }
 
 #[derive(Debug, Display, PartialEq, From, Clone, PartialOrd)]
-pub enum StopEval {
+pub enum EvalSignal {
     #[display("end-test: early return using {_0:?}")]
     EndTest(EndThisTestAction),
 }

@@ -12,7 +12,7 @@ use crate::{
     Features,
     evaluation::{
         Context, Rundata, SelectableSource, SingleEvaluation, SingleEvaluationError,
-        single_evaluation::StopEval,
+        single_evaluation::EvalSignal,
     },
     spec::{
         Array, EndThisTestAction, Entity, EntityId, GeneralTest, MapKey, PrimitiveValue,
@@ -45,7 +45,7 @@ pub enum JustFailTestRunError {
 
 pub type ActualTestResultEval = (
     Vec<RuntimeAction>,
-    Result<Either<StopEval, RuntimeCriterion>, SingleEvaluationError>,
+    Result<Either<EvalSignal, RuntimeCriterion>, SingleEvaluationError>,
 );
 pub type ActualTestResultStatus =
     Either<ActualTestResultEval, Result<JustFailTestRunError, FatalRunError>>;
@@ -109,7 +109,7 @@ pub(crate) async fn run_actual_test<Hooks, Source: SelectableSource>(
     ) {
         Ok(eval) => {
             let eval = eval.run_to_end_with_early_return().await;
-            let value: Result<Either<StopEval, RuntimeCriterion>, SingleEvaluationError> =
+            let value: Result<Either<EvalSignal, RuntimeCriterion>, SingleEvaluationError> =
                 eval.one_specialized();
             ActualTestResult {
                 status: Either::Left((eval.into_actions(), value)),

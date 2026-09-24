@@ -1,17 +1,18 @@
 use std::collections::BTreeMap;
 
 use derive_getters::Getters;
+use derive_more::Deref;
 use either::Either;
 
 use crate::{
     Features,
     evaluation::{
-        Context, SelectableSource, SingleEvaluation, SingleEvaluationError,
-        single_evaluation::StopEval,
+        Context, Effects, SelectableSource, SingleEvaluation, SingleEvaluationError,
+        single_evaluation::EvalSignal,
     },
     spec::{
-        ActionEntity, CriterionEntity, EntityId, RuntimeAction, RuntimeCriterion, RuntimeValue,
-        Text,
+        ActionEntity, CriterionEntity, EntityId, HookList, RuntimeAction, RuntimeCriterion,
+        RuntimeValue, Text,
     },
 };
 
@@ -23,54 +24,76 @@ pub enum HookFailure {
     Action(SingleEvaluationError),
 }
 
+pub type FallibleHookResults = Vec<Result<HookResult, HookFailure>>;
+
+// ##########################################################
+// ##########################################################
+
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct HookResult {
-    pub(crate) actions: Vec<RuntimeAction>,
-    pub(crate) eval_signals: Option<StopEval>,
+    pub(crate) criterion: Option<RuntimeCriterion>,
+    // pub(crate) eval_signals: Option<StopEval>,
 }
 impl HookResult {
-    pub async fn from_pre_hook<Source: SelectableSource>(
+    async fn from_run<Source: SelectableSource>(
         context: &Context<'_, '_>,
         source: Source,
+        features: Features,
         crit: EntityId<CriterionEntity>,
         act: EntityId<ActionEntity>,
-    ) -> Result<HookResult, HookFailure> {
-        execute_hook(
-            context,
-            source,
-            Features::PermittedFEAT_PreTestHook,
-            crit,
-            act,
-        )
-        .await
-    }
-    pub async fn from_post_hook<Source: SelectableSource>(
-        context: &Context<'_, '_>,
-        source: Source,
-        crit: EntityId<CriterionEntity>,
-        act: EntityId<ActionEntity>,
-    ) -> Result<HookResult, HookFailure> {
-        execute_hook(
-            context,
-            source,
-            Features::PermittedFEAT_PostTestHook,
-            crit,
-            act,
-        )
-        .await
-    }
-    pub fn into_actions(self) -> Vec<RuntimeAction> {
-        self.actions
+    ) -> Result<
+        (
+            Vec<RuntimeAction>,
+            Option<RuntimeCriterion>,
+            Option<EvalSignal>,
+        ),
+        HookFailure,
+    > {
+        execute_hook(context, source, features, crit, act).await
     }
 }
 
-pub(crate) async fn execute_hook<'p, 'e, Source: SelectableSource>(
+impl HookList {
+    pub(crate) async fn run_all<'p, 'e, Source: SelectableSource>(
+        &self,
+        ctx: &Context<'p, 'e>,
+        eft: &mut Effects,
+        feat: Features,
+        fallback: Source,
+    ) -> (FallibleHookResults, Option<EvalSignal>) {
+        let mut tried = vec![];
+        for (crit, act) in self.iter() {
+            match execute_hook(ctx, (&eft, &fallback), feat, crit, act).await {
+                Err(failure) => tried.push(Err(failure)),
+                Ok((actions, criterion, signal)) => {
+                    tried.push(Ok(HookResult { criterion }));
+
+                    if let Some(signal) = signal {
+                        match &signal {
+                            EvalSignal::EndTest(_) => return (tried, Some(signal)),
+                        }
+                    }
+                }
+            }
+        }
+        (tried, None)
+    }
+}
+
+async fn execute_hook<'p, 'e, Source: SelectableSource>(
     settings: &Context<'p, 'e>,
     outer_fallback: Source,
     features: Features,
     crit: EntityId<CriterionEntity>,
     act: EntityId<ActionEntity>,
-) -> Result<HookResult, HookFailure> {
+) -> Result<
+    (
+        Vec<RuntimeAction>,
+        Option<RuntimeCriterion>,
+        Option<EvalSignal>,
+    ),
+    HookFailure,
+> {
     let mut actions = vec![];
 
     let crit_eval = SingleEvaluation::new(
@@ -83,11 +106,11 @@ pub(crate) async fn execute_hook<'p, 'e, Source: SelectableSource>(
     .map_err(HookFailure::Criterion)?;
     let crit_eval = crit_eval.run_to_end_with_early_return().await;
 
-    let criterion: Either<StopEval, RuntimeCriterion> = crit_eval
+    let criterion: Either<EvalSignal, RuntimeCriterion> = crit_eval
         .one_specialized()
         .map_err(HookFailure::Criterion)?;
 
-    let eval_signals = match criterion.map_left(Some) {
+    let eval_signals = match criterion.clone().map_left(Some) {
         Either::Left(eval_signals) => eval_signals,
         Either::Right(criterion) => {
             if criterion.is_fulfilled() {
@@ -101,7 +124,7 @@ pub(crate) async fn execute_hook<'p, 'e, Source: SelectableSource>(
                 .map_err(HookFailure::Action)?;
                 let act_eval = act_eval.run_to_end_with_early_return().await;
 
-                let action: Either<StopEval, RuntimeAction> =
+                let action: Either<EvalSignal, RuntimeAction> =
                     act_eval.one_specialized().map_err(HookFailure::Criterion)?;
 
                 actions.extend(crit_eval.into_actions());
@@ -118,8 +141,5 @@ pub(crate) async fn execute_hook<'p, 'e, Source: SelectableSource>(
             }
         }
     };
-    Ok(HookResult {
-        actions,
-        eval_signals,
-    })
+    Ok((actions, criterion.right(), eval_signals))
 }

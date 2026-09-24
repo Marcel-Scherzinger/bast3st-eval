@@ -74,6 +74,31 @@ pub enum RuntimeValue {
     Comp(MappingOrArray),
 }
 
+impl RuntimeValue {
+    pub(crate) fn to_mapping_with(
+        &self,
+        key: impl Into<MapKey>,
+        value: impl Into<RuntimeValue>,
+    ) -> RealMapping {
+        let key = key.into();
+        let value = value.into();
+        let col: BTreeMap<MapKey, RuntimeValue> = match self {
+            Self::Prim(prim) => {
+                let mut col = BTreeMap::default();
+                col.insert("".into(), prim.clone().into());
+                col.insert(key, value);
+                col
+            }
+            Self::Comp(col) => {
+                let mut col = col.to_btreemap();
+                col.insert(key, value);
+                col
+            }
+        };
+        col.into()
+    }
+}
+
 impl<T> From<T> for RuntimeValue
 where
     PrimitiveValue: From<T>,

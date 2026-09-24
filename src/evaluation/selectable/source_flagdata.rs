@@ -1,4 +1,7 @@
-use std::{borrow::Cow, collections::BTreeMap};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, VecDeque},
+};
 
 use crate::spec::{
     Array, Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
@@ -41,6 +44,30 @@ impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(K, V)> for FlagData {
             .extended_with(
                 iter.into_iter()
                     .map(|(text, val)| (text.into(), val.into())),
+            )
+            .into();
+    }
+}
+
+impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(VecDeque<K>, V)> for FlagData {
+    fn extend<T: IntoIterator<Item = (VecDeque<K>, V)>>(&mut self, iter: T) {
+        let flags: RealMapping = self.as_ref().clone();
+        self.flags = flags
+            .with_deep_extend(
+                iter.into_iter()
+                    .map(|(text, val)| (text.into_iter().map(|x| x.into()).collect(), val.into())),
+            )
+            .into();
+    }
+}
+
+impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(Vec<K>, V)> for FlagData {
+    fn extend<T: IntoIterator<Item = (Vec<K>, V)>>(&mut self, iter: T) {
+        let flags: RealMapping = self.as_ref().clone();
+        self.flags = flags
+            .with_deep_extend(
+                iter.into_iter()
+                    .map(|(text, val)| (text.into_iter().map(|x| x.into()).collect(), val.into())),
             )
             .into();
     }

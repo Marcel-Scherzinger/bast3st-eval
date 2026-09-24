@@ -78,6 +78,7 @@ dependencies = [
  "dotenvy",
  "either",
  "env_logger",
+ "itertools 0.15.0",
  "log",
  "regex",
  "scratch-test-interpreter",
@@ -364,6 +365,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -589,7 +599,7 @@ dependencies = [
  "derive-getters",
  "derive_more",
  "either",
- "itertools",
+ "itertools 0.14.0",
  "log",
  "ouroboros",
  "scratch-test-model-proc",
@@ -616,7 +626,7 @@ version = "0.1.0"
 source = "git+https://github.com/marcel-scherzinger/scratch-test-value#34f5d35c06be74e32f168efd385a81ed18b2a137"
 dependencies = [
  "derive_more",
- "itertools",
+ "itertools 0.14.0",
  "serde",
  "serde_json",
  "thiserror",

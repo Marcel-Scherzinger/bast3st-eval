@@ -9,37 +9,37 @@ use serde::{Deserialize, Serialize};
 use crate::spec::{ActionEntity, CriterionEntity, EntityId};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
-pub struct SpecHooks {
+pub struct SpecHooks<HL = HookList> {
     #[serde(rename = "before-all-categories", default)]
-    before_all_categories: HookList,
+    pub(crate) before_all_categories: HL,
     #[serde(rename = "after-all-categories", default)]
-    after_all_categories: HookList,
+    pub(crate) after_all_categories: HL,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
-pub struct CategoryHooks {
+pub struct CategoryHooks<HL = HookList> {
     #[serde(rename = "before-all-tests", default)]
-    before_all_tests: HookList,
+    pub(crate) before_all_tests: HL,
     #[serde(rename = "after-all-tests", default)]
-    after_all_tests: HookList,
+    pub(crate) after_all_tests: HL,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Getters)]
-pub struct MainTestHooks {
+pub struct MainTestHooks<HL = HookList> {
     #[serde(rename = "before-main", default)]
-    before_main: HookList,
+    pub(crate) before_main: HL,
     #[serde(rename = "before-alternatives", default)]
-    before_alternatives: HookList,
+    pub(crate) before_alternatives: HL,
     #[serde(rename = "after-alternatives", default)]
-    after_alternatives: HookList,
+    pub(crate) after_alternatives: HL,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Getters)]
-pub struct AlternativeTestHooks {
+pub struct AlternativeTestHooks<HL = HookList> {
     #[serde(rename = "before-alt", default)]
-    before_alt: HookList,
+    pub(crate) before_alt: HL,
     #[serde(rename = "after-alt", default)]
-    after_alt: HookList,
+    pub(crate) after_alt: HL,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Deref)]
