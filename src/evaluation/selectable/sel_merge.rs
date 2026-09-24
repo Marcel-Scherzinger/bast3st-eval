@@ -20,6 +20,8 @@ impl<A: SelectableSource, B: SelectableSource> SelectableSource for (A, B) {
 // TODO: inefficient
 impl<A: SelectableSource + Copy, B: SelectableSource + Copy, C: SelectableSource + Copy>
     SelectableSource for (A, B, C)
+where
+    (A, (B, C)): SelectableSource,
 {
     async fn request<'z>(
         &'z self,

@@ -65,7 +65,7 @@ fn process_test_status(
 
 impl PMainTest {
     #[allow(unused)]
-    pub(crate) async fn new<'p, 'e, Fallback: SelectableSource>(
+    pub async fn new<'p, 'e, Fallback: SelectableSource>(
         ctx: &Context<'p, 'e>,
         test: &MainTest,
         fallback: Fallback,

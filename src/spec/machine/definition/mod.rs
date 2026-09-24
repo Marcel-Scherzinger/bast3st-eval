@@ -18,9 +18,10 @@ use crate::{
 
 pub type Param<'a> = Result<&'a crate::spec::runtime::RuntimeAny, FatalError>;
 
-pub type Pushable<R> = Box<dyn for<'a> FnOnce(Param<'a>) -> Machine<R>>;
+pub type Pushable<R> = Box<dyn Send + for<'a> FnOnce(Param<'a>) -> Machine<R>>;
 type TaskPushable<T, R> = Box<
-    dyn for<'a> FnOnce(std::borrow::Cow<'a, <T as SpecificTaskRequest>::MainOutput>) -> Machine<R>,
+    dyn Send
+        + for<'a> FnOnce(std::borrow::Cow<'a, <T as SpecificTaskRequest>::MainOutput>) -> Machine<R>,
 >;
 
 pub type Finished<R> = Result<Result<(R, MachineMeta), cerr>, FatalError>;

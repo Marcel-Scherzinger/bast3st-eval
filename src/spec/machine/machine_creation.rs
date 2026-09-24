@@ -10,15 +10,15 @@ use crate::spec::{
     },
 };
 
-pub trait MachineConstruction<E, RuntimeT>: Sized {
-    fn query_cow<R: ClarifiedCerrMerging + 'static>(
+pub trait MachineConstruction<E, RuntimeT: Send>: Sized {
+    fn query_cow<R: ClarifiedCerrMerging + 'static + Send>(
         self,
-        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
+        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static + Send,
     ) -> Machine<R>;
 
-    fn query<R: ClarifiedCerrMerging + 'static>(
+    fn query<R: ClarifiedCerrMerging + 'static + Send>(
         self,
-        closure: impl FnOnce(RuntimeT) -> Machine<R> + 'static,
+        closure: impl FnOnce(RuntimeT) -> Machine<R> + 'static + Send,
     ) -> Machine<R>
     where
         RuntimeT: Clone,
@@ -26,9 +26,9 @@ pub trait MachineConstruction<E, RuntimeT>: Sized {
         self.query_cow(|cow| closure(cow.into_owned()))
     }
 
-    fn query_ref<R: ClarifiedCerrMerging + 'static>(
+    fn query_ref<R: ClarifiedCerrMerging + 'static + Send>(
         self,
-        closure: impl for<'a> FnOnce(&'a RuntimeT) -> Machine<R> + 'static,
+        closure: impl for<'a> FnOnce(&'a RuntimeT) -> Machine<R> + 'static + Send,
     ) -> Machine<R>
     where
         RuntimeT: Clone + CheapBorrowFromAny,
@@ -37,7 +37,7 @@ pub trait MachineConstruction<E, RuntimeT>: Sized {
     }
 }
 
-impl<E, RuntimeT> MachineConstruction<E, RuntimeT> for EntityId<E>
+impl<E, RuntimeT: Send> MachineConstruction<E, RuntimeT> for EntityId<E>
 where
     EntityId<E>: PossibleRuntimeValue<RuntimeT>,
     RuntimeT: Clone + SpecializeFrom,
@@ -45,7 +45,7 @@ where
 {
     fn query_cow<R: ClarifiedCerrMerging + 'static>(
         self,
-        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
+        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static + Send,
     ) -> Machine<R> {
         let id: EntityId<Entity> = self.cast_id();
         let on_push =
@@ -54,15 +54,15 @@ where
     }
 }
 
-impl<RuntimeT> MachineConstruction<ValueReference, RuntimeT> for ValueReference
+impl<RuntimeT: Send> MachineConstruction<ValueReference, RuntimeT> for ValueReference
 where
     ValueReference: PossibleRuntimeValue<RuntimeT>,
     RuntimeT: Clone + SpecializeFrom + 'static,
     EntityId<Entity>: PossibleRuntimeValue<RuntimeT>,
 {
-    fn query_cow<R: ClarifiedCerrMerging + 'static>(
+    fn query_cow<R: ClarifiedCerrMerging + 'static + Send>(
         self,
-        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
+        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static + Send,
     ) -> Machine<R> {
         match self {
             Self::EntityId(id) => id.cast_id::<Entity>().query_cow(closure),
@@ -81,28 +81,28 @@ where
         }
     }
 }
-impl<RuntimeT> MachineConstruction<ValueReference, RuntimeT> for &ValueReference
+impl<RuntimeT: Send> MachineConstruction<ValueReference, RuntimeT> for &ValueReference
 where
     ValueReference: PossibleRuntimeValue<RuntimeT>,
     RuntimeT: Clone + SpecializeFrom + 'static,
     EntityId<Entity>: PossibleRuntimeValue<RuntimeT>,
 {
-    fn query_cow<R: ClarifiedCerrMerging + 'static>(
+    fn query_cow<R: ClarifiedCerrMerging + 'static + Send>(
         self,
-        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
+        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static + Send,
     ) -> Machine<R> {
         self.clone().query_cow(closure)
     }
 }
 
-impl<RuntimeT> MachineConstruction<Selector, RuntimeT> for Selector
+impl<RuntimeT: Send> MachineConstruction<Selector, RuntimeT> for Selector
 where
     Selector: PossibleRuntimeValue<RuntimeT>,
     RuntimeT: SpecializeFrom,
 {
-    fn query_cow<R: ClarifiedCerrMerging + 'static>(
+    fn query_cow<R: ClarifiedCerrMerging + 'static + Send>(
         self,
-        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
+        closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static + Send,
     ) -> Machine<R> {
         let on_push = move |param: Param<'_>| Machine::from_res(cast_param(param).map(closure));
         Machine::from_pushable(self, Box::new(on_push))
@@ -120,14 +120,14 @@ where
 ///
 /// This direction seems to be impossible so the only solution would be a new trait with
 /// new methods specifically for `Option`.
-impl<E, T, RuntimeT> MachineConstruction<E, Option<RuntimeT>> for Option<T>
+impl<E, T, RuntimeT: Send> MachineConstruction<E, Option<RuntimeT>> for Option<T>
 where
     RuntimeT: Clone,
     T: MachineConstruction<E, RuntimeT>,
 {
-    fn query_cow<R: ClarifiedCerrMerging + 'static>(
+    fn query_cow<R: ClarifiedCerrMerging + 'static + Send>(
         self,
-        closure: impl for<'a> FnOnce(Cow<'a, Option<RuntimeT>>) -> Machine<R> + 'static,
+        closure: impl for<'a> FnOnce(Cow<'a, Option<RuntimeT>>) -> Machine<R> + 'static + Send,
     ) -> Machine<R> {
         if let Some(val) = self {
             val.query_cow(move |runtime| closure(Cow::Owned(Some(runtime.into_owned()))))
@@ -139,14 +139,14 @@ where
 
 macro_rules! impl_task_queries {
     ($task: ty) => {
-        impl<RuntimeT> MachineConstruction<$task, RuntimeT> for $task
+        impl<RuntimeT: Send> MachineConstruction<$task, RuntimeT> for $task
         where
             RuntimeT: SpecializeFrom<<$task as SpecificTaskRequest>::MainOutput>,
             <$task as SpecificTaskRequest>::MainOutput: Clone,
         {
-            fn query_cow<R: ClarifiedCerrMerging + 'static>(
+            fn query_cow<R: ClarifiedCerrMerging + 'static + Send>(
                 self,
-                closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static,
+                closure: impl for<'a> FnOnce(Cow<'a, RuntimeT>) -> Machine<R> + 'static + Send,
             ) -> Machine<R> {
                 Machine::from_task(
                     self.clone(),
@@ -163,14 +163,14 @@ pub trait MachineConstructionN<Closure, Extra, Ret> {
     fn query_n(self, closure: Closure) -> Machine<Ret>;
 }
 
-impl<C, E1, E2, R1, R2, Ret: ClarifiedCerrMerging + 'static, T1: ToOwned, T2: ToOwned>
+impl<C, E1, E2, R1, R2, Ret: ClarifiedCerrMerging + 'static + Send, T1: ToOwned, T2: ToOwned>
     MachineConstructionN<C, (E1, E2, R1, R2), Ret> for (&T1, &T2)
 where
-    C: FnOnce(R1, R2) -> Machine<Ret> + 'static,
-    R1: Clone + 'static,
-    R2: Clone + 'static,
-    T1::Owned: MachineConstruction<E1, R1> + 'static,
-    T2::Owned: MachineConstruction<E2, R2> + 'static,
+    C: FnOnce(R1, R2) -> Machine<Ret> + 'static + Send,
+    R1: Clone + 'static + Send,
+    R2: Clone + 'static + Send,
+    T1::Owned: MachineConstruction<E1, R1> + 'static + Send,
+    T2::Owned: MachineConstruction<E2, R2> + 'static + Send,
 {
     fn query_n(self, closure: C) -> Machine<Ret> {
         let t1 = self.0.to_owned();

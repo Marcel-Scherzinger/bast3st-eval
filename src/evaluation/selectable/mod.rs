@@ -19,7 +19,7 @@ use crate::{
     spec::{FatalError, RuntimeAny, Selector},
 };
 
-pub trait SelectableSource {
+pub trait SelectableSource: Send + Sync {
     fn enforce_required(required: Features, provided: Features) -> Result<(), FatalError> {
         if provided.contains(required) {
             Ok(())
@@ -38,7 +38,7 @@ pub trait SelectableSource {
         &'a self,
         selector: &Selector,
         allowed_features: Features,
-    ) -> impl Future<Output = Result<Cow<'a, RuntimeAny>, FatalError>>;
+    ) -> impl Future<Output = Result<Cow<'a, RuntimeAny>, FatalError>> + Send;
 }
 
 /// `()` can be used as a fallback [`SelectableSource`] that always returns

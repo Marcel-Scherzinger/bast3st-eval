@@ -502,14 +502,14 @@ fn eval_concat(
 
 pub(super) fn eval_flat_if_then_else<
     E,
-    R: Clone + SpecializeFrom + ClarifiedCerrMerging + 'static,
+    R: Clone + SpecializeFrom + ClarifiedCerrMerging + 'static + Send,
 >(
     if_: &EntityId<CriterionEntity>,
     then_: E,
     else_: E,
 ) -> Machine<R>
 where
-    E: PossibleRuntimeValue<R> + MachineConstruction<E, R> + 'static,
+    E: PossibleRuntimeValue<R> + MachineConstruction<E, R> + 'static + Send,
 {
     if_.query_ref(move |if_: &RuntimeCriterion| {
         if if_.is_fulfilled() {

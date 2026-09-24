@@ -32,7 +32,7 @@ impl Selector {
     pub fn std_machine<Out>(self) -> Machine<RuntimeValue>
     where
         Self: PossibleRuntimeValue<Out>,
-        Out: SpecializeFrom,
+        Out: SpecializeFrom + Send,
         RuntimeValue: From<Out>,
     {
         let required = self.required_features();

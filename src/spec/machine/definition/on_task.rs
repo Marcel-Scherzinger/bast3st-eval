@@ -10,7 +10,7 @@ pub enum OnTask<R> {
 }
 
 impl<R: ClarifiedCerrMerging + 'static> OnTask<R> {
-    pub fn map<U>(self, closure: impl FnOnce(R) -> U + 'static) -> OnTask<U> {
+    pub fn map<U>(self, closure: impl FnOnce(R) -> U + 'static + Send) -> OnTask<U> {
         match self {
             Self::CompiledRegex((req, inner)) => {
                 OnTask::CompiledRegex((req, Box::new(move |val| inner(val).map(closure))))
@@ -20,7 +20,7 @@ impl<R: ClarifiedCerrMerging + 'static> OnTask<R> {
             }
         }
     }
-    pub fn and_then<U>(self, closure: impl FnOnce(R) -> Machine<U> + 'static) -> OnTask<U> {
+    pub fn and_then<U>(self, closure: impl FnOnce(R) -> Machine<U> + 'static + Send) -> OnTask<U> {
         match self {
             Self::CompiledRegex((req, inner)) => {
                 OnTask::CompiledRegex((req, Box::new(move |val| inner(val).and_then(closure))))

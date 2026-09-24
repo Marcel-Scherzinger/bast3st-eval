@@ -492,6 +492,7 @@ fn eval_comparison(
     right: &ValueReference,
     failure_explaination: Option<ValueReference>,
     satisfied_cons: impl FnOnce(PrimitiveValue, PrimitiveValue) -> (bool, InnerRuntimeCriterion)
+    + Send
     + 'static,
 ) -> Machine<RuntimeCriterion> {
     (left, right).query_n(move |left: PrimitiveValue, right: PrimitiveValue| {

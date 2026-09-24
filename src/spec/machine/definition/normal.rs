@@ -165,11 +165,11 @@ impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
         R::maybe_merge(self)
     }
     /// Alias of [`Self::and_then`]
-    pub fn query<U>(self, closure: impl FnOnce(R) -> Machine<U> + 'static) -> Machine<U> {
+    pub fn query<U>(self, closure: impl FnOnce(R) -> Machine<U> + 'static + Send) -> Machine<U> {
         self.and_then(closure)
     }
 
-    pub fn and_then<U>(self, closure: impl FnOnce(R) -> Machine<U> + 'static) -> Machine<U> {
+    pub fn and_then<U>(self, closure: impl FnOnce(R) -> Machine<U> + 'static + Send) -> Machine<U> {
         let new_inner = match self.inner {
             Ok(InnerMachine::Pushable(missing, inner_closure)) => {
                 let new_inner = InnerMachine::Pushable(
@@ -199,7 +199,7 @@ impl<R: ClarifiedCerrMerging + 'static> Machine<R> {
             inner: new_inner,
         }
     }
-    pub fn map<U>(self, closure: impl FnOnce(R) -> U + 'static) -> Machine<U> {
+    pub fn map<U>(self, closure: impl FnOnce(R) -> U + 'static + Send) -> Machine<U> {
         let new_inner = match self.inner {
             Ok(InnerMachine::Pushable(missing, inner_closure)) => {
                 let mapped_closure = move |val: Param| -> Machine<U> {
