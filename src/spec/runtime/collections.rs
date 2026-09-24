@@ -68,6 +68,12 @@ pub struct RealMapping {
     default: Option<Box<RuntimeValue>>,
 }
 
+impl AsRef<BTreeMap<MapKey, RuntimeValue>> for RealMapping {
+    fn as_ref(&self) -> &BTreeMap<MapKey, RuntimeValue> {
+        &self.mapping
+    }
+}
+
 impl RealMapping {
     pub fn new_with_default(
         mapping: Arc<BTreeMap<MapKey, RuntimeValue>>,
@@ -116,28 +122,16 @@ impl RealMapping {
     pub fn iter(&self) -> impl Iterator<Item = (&MapKey, &RuntimeValue)> {
         self.mapping.iter()
     }
-    pub fn with_append(&self, mut map: BTreeMap<MapKey, RuntimeValue>) -> RealMapping {
-        let mut out: BTreeMap<MapKey, RuntimeValue> = self.mapping.as_ref().clone();
-        out.append(&mut map);
-        RealMapping {
-            mapping: out.into(),
-            default: self.default.clone(),
-        }
+
+    pub fn with_merged(&self, other: &BTreeMap<MapKey, RuntimeValue>) -> Self {
+        self.with_new_keys(
+            other
+                .iter()
+                .map(|(key, val)| (vec![key.clone()].into(), val.clone())),
+        )
     }
 
-    pub fn extended_with<E>(&self, other: impl IntoIterator<Item = E>) -> RealMapping
-    where
-        BTreeMap<MapKey, RuntimeValue>: Extend<E>,
-    {
-        let mut out: BTreeMap<MapKey, RuntimeValue> = self.mapping.as_ref().clone();
-        out.extend(other);
-        RealMapping {
-            mapping: out.into(),
-            default: self.default.clone(),
-        }
-    }
-
-    pub fn with_deep_extend<K: Into<MapKey>, V: Into<RuntimeValue>>(
+    pub fn with_new_keys<K: Into<MapKey>, V: Into<RuntimeValue>>(
         &self,
         other: impl IntoIterator<Item = (VecDeque<K>, V)>,
     ) -> RealMapping {

@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::spec::{ActionEntity, CriterionEntity, EntityId};
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Clone)]
 pub struct SpecHooks<HL = HookList> {
     #[serde(rename = "before-all-categories", default)]
     pub(crate) before_all_categories: HL,
@@ -16,7 +16,7 @@ pub struct SpecHooks<HL = HookList> {
     pub(crate) after_all_categories: HL,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Clone)]
 pub struct CategoryHooks<HL = HookList> {
     #[serde(rename = "before-all-tests", default)]
     pub(crate) before_all_tests: HL,
@@ -24,7 +24,9 @@ pub struct CategoryHooks<HL = HookList> {
     pub(crate) after_all_tests: HL,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Getters)]
+#[derive(
+    Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Getters, Clone,
+)]
 pub struct MainTestHooks<HL = HookList> {
     #[serde(rename = "before-main", default)]
     pub(crate) before_main: HL,
@@ -34,7 +36,9 @@ pub struct MainTestHooks<HL = HookList> {
     pub(crate) after_alternatives: HL,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Getters)]
+#[derive(
+    Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Getters, Clone,
+)]
 pub struct AlternativeTestHooks<HL = HookList> {
     #[serde(rename = "before-alt", default)]
     pub(crate) before_alt: HL,
@@ -42,7 +46,7 @@ pub struct AlternativeTestHooks<HL = HookList> {
     pub(crate) after_alt: HL,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Deref)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Deref, Clone)]
 pub struct HookList(Vec<(EntityId<CriterionEntity>, EntityId<ActionEntity>)>);
 
 impl<'a> IntoIterator for &'a HookList {

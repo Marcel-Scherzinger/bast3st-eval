@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone)]
 #[serde(tag = "op", rename_all = "kebab-case")]
 pub enum ActionEntity {
     SendMsg {

@@ -15,7 +15,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[serde(tag = "op", rename_all = "kebab-case")]
 pub enum CriterionEntity {
     Negated {

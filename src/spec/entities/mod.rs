@@ -16,7 +16,7 @@ pub use entity_criterion::*;
 pub use entity_id::*;
 pub use entity_value::*;
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, From)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, From, Clone)]
 #[serde(untagged)]
 pub enum Entity {
     Criterion(CriterionEntity),

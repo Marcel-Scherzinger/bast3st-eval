@@ -16,7 +16,7 @@ use crate::{
 };
 pub type MappingReference = ValueReference;
 
-#[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize, Clone)]
 #[serde(tag = "op", rename_all = "kebab-case")]
 pub enum ValueEntity {
     Lit {

@@ -44,9 +44,9 @@ impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(K, V)> for FlagData {
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         let flags: RealMapping = self.as_ref().clone();
         self.flags = flags
-            .extended_with(
+            .with_new_keys(
                 iter.into_iter()
-                    .map(|(text, val)| (text.into(), val.into())),
+                    .map(|(text, val)| (vec![text.into()].into_iter().collect(), val.into())),
             )
             .into();
     }
@@ -56,7 +56,7 @@ impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(VecDeque<K>, V)> for FlagDa
     fn extend<T: IntoIterator<Item = (VecDeque<K>, V)>>(&mut self, iter: T) {
         let flags: RealMapping = self.as_ref().clone();
         self.flags = flags
-            .with_deep_extend(
+            .with_new_keys(
                 iter.into_iter()
                     .map(|(text, val)| (text.into_iter().map(|x| x.into()).collect(), val.into())),
             )
@@ -68,7 +68,7 @@ impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(Vec<K>, V)> for FlagData {
     fn extend<T: IntoIterator<Item = (Vec<K>, V)>>(&mut self, iter: T) {
         let flags: RealMapping = self.as_ref().clone();
         self.flags = flags
-            .with_deep_extend(
+            .with_new_keys(
                 iter.into_iter()
                     .map(|(text, val)| (text.into_iter().map(|x| x.into()).collect(), val.into())),
             )
@@ -82,6 +82,11 @@ impl FlagData {
         Self: Extend<E>,
     {
         self.extend(other);
+        self
+    }
+    pub fn with_append(self, other: FlagData) -> Self {
+        let m: RealMapping = self.as_ref().clone();
+        m.with_merged(other.as_ref().as_ref());
         self
     }
 

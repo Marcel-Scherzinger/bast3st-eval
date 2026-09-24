@@ -8,7 +8,7 @@ use crate::spec::{
     RandomGeneration, hooks::SpecHooks,
 };
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
 pub struct Bast3StSpec {
     title: String,
     description: Option<String>,
@@ -20,14 +20,14 @@ pub struct Bast3StSpec {
     entities: BTreeMap<EntityId, Entity>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Getters)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Getters, Clone)]
 pub struct Category {
     title: String,
     description: Option<String>,
     #[serde(default)]
     tests: Vec<MainTest>,
 }
-#[derive(Debug, PartialEq, Serialize, Deserialize, Getters)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Getters, Clone)]
 pub struct MainTest {
     #[serde(flatten)]
     general: GeneralTest<MainTestHooks>,
@@ -35,13 +35,13 @@ pub struct MainTest {
     alternative_tests: Vec<AlternativeTest>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Getters)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Getters, Clone)]
 pub struct AlternativeTest {
     #[serde(flatten)]
     general: GeneralTest<AlternativeTestHooks>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Getters)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Getters, Clone)]
 pub struct GeneralTest<Hooks> {
     title: String,
     criterion: EntityId<CriterionEntity>,

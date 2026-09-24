@@ -19,6 +19,11 @@ impl Effects {
     pub fn into_parts(self) -> (Vec<ProcessedAction>, FlagData) {
         (self.actions, self.flags)
     }
+    pub fn append(&mut self, other: Effects) {
+        self.actions.extend(other.actions);
+        let flags = std::mem::take(&mut self.flags);
+        self.flags = flags.with_append(other.flags);
+    }
 }
 
 impl SelectableSource for Effects {
