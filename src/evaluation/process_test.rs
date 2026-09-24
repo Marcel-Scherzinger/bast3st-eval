@@ -65,8 +65,8 @@ fn process_test_status(
 
 impl PMainTest {
     #[allow(unused)]
-    pub async fn new<'p, 'e, Fallback: SelectableSource>(
-        ctx: &Context<'p, 'e>,
+    pub async fn new<Fallback: SelectableSource>(
+        ctx: &Context,
         test: &MainTest,
         fallback: Fallback,
     ) -> Result<WithEffects<PMainTest>, MainTestFailure> {
@@ -74,8 +74,8 @@ impl PMainTest {
     }
 }
 
-async fn process_main_test<'p, 'e, Fallback: SelectableSource>(
-    ctx: &Context<'p, 'e>,
+async fn process_main_test<Fallback: SelectableSource>(
+    ctx: &Context,
     test: &MainTest,
     fallback: Fallback,
 ) -> Result<WithEffects<PMainTest>, MainTestFailure> {
@@ -177,8 +177,8 @@ async fn process_main_test<'p, 'e, Fallback: SelectableSource>(
     Ok(WithEffects::new(out, eft))
 }
 
-async fn try_alternative_tests_of_main<'p, 'e, Source: SelectableSource>(
-    ctx: &Context<'p, 'e>,
+async fn try_alternative_tests_of_main<Source: SelectableSource>(
+    ctx: &Context,
     eft: &mut Effects,
     alternatives: impl IntoIterator<Item = &AlternativeTest>,
     fallback: Source,

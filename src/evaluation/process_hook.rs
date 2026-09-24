@@ -30,9 +30,9 @@ pub struct HookResult {
 
 impl HookList {
     #[allow(unused)]
-    pub(crate) async fn run_all<'p, 'e, Source: SelectableSource>(
+    pub(crate) async fn run_all<Source: SelectableSource>(
         &self,
-        ctx: &Context<'p, 'e>,
+        ctx: &Context,
         eft: &mut Effects,
         feat: Features,
         fallback: Source,
@@ -57,8 +57,8 @@ impl HookList {
     }
 }
 
-async fn execute_hook<'p, 'e, Source: SelectableSource>(
-    settings: &Context<'p, 'e>,
+async fn execute_hook<Source: SelectableSource>(
+    settings: &Context,
     outer_fallback: Source,
     features: Features,
     crit: EntityId<CriterionEntity>,

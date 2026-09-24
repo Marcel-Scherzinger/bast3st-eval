@@ -59,7 +59,7 @@ pub struct ActualTestResult {
 
 impl ActualTestResult {
     pub async fn from_run<Hooks, Source: SelectableSource>(
-        settings: &Context<'_, '_>,
+        settings: &Context,
         test: &GeneralTest<Hooks>,
         source: Source,
         features: Features,
@@ -69,7 +69,7 @@ impl ActualTestResult {
 }
 
 pub(crate) async fn run_actual_test<Hooks, Source: SelectableSource>(
-    settings: &Context<'_, '_>,
+    settings: &Context,
     test: &GeneralTest<Hooks>,
     fallback: Source,
     features: Features,
@@ -125,7 +125,7 @@ pub(crate) async fn run_actual_test<Hooks, Source: SelectableSource>(
 }
 
 fn run_single_test_for_selectable<Hooks>(
-    settings: &Context,
+    ctx: &Context,
     doc: &ProjectDoc,
     initial_block: &Id,
     general: &GeneralTest<Hooks>,
@@ -139,9 +139,10 @@ fn run_single_test_for_selectable<Hooks>(
     let predefined_randoms = general.predefined_randoms().as_ref();
     let random_generation = general.random_generation();
 
-    let interp = scratch_test_interpreter::Interpreter::new_restrictive();
+    let interp =
+        scratch_test_interpreter::Interpreter::new_restrictive().with_limits(ctx.limits().clone());
 
-    let mut state = DefaultState::from_doc(doc, settings.max_list_length().into());
+    let mut state = DefaultState::from_doc(doc, ctx.max_list_length().into());
     // TODO: think about using another Rng for reproducible results
     state.set_randoms(match random_generation {
         RandomGeneration::Disabled => None,
