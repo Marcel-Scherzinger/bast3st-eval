@@ -80,6 +80,7 @@ dependencies = [
  "env_logger",
  "itertools 0.15.0",
  "log",
+ "rand",
  "regex",
  "scratch-test-interpreter",
  "scratch-test-model",

@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use crate::spec::{
-    Entity, EntityId, RuntimeAction, RuntimeAny, SpecificTaskRequest,
+    RuntimeAny, SpecificTaskRequest,
     machine::{
         FatalError, Machine, MachineMeta, MachineWith, MissingValue,
         definition::{InnerMachine, TaskPushable},

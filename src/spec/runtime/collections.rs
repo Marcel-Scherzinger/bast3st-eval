@@ -4,10 +4,8 @@ use std::{
     sync::Arc,
 };
 
-use bitflags::iter::IterNames;
 use derive_more::From;
 use either::Either;
-use itertools::Itertools;
 use scratch_test_value::{SList, SNumber};
 
 use crate::{
@@ -146,7 +144,7 @@ impl RealMapping {
         let mut extendable = DeepExtendable::from(self.mapping.as_ref().clone());
         extendable.ensure_inner();
 
-        for (mut keys, value) in other {
+        for (keys, value) in other {
             let value = value.into();
             extendable.insert_path(keys.into_iter().map(|k| k.into()).collect(), value.into());
         }
@@ -237,12 +235,13 @@ impl DeepExtendable {
         }
     }
 
+    #[allow(unused)]
     fn insert_single(&mut self, key: MapKey, value: PrimitiveValue) {
         self.ensure_inner().insert(key, value.into());
     }
     fn ensure_inner(&mut self) -> &mut BTreeMap<MapKey, DeepExtendable> {
         match self {
-            Self::Inner(i) => (),
+            Self::Inner(_) => (),
             Self::Leaf(l) => {
                 let l = std::mem::replace(l, PrimitiveValue::Number(SNumber::Int(0)));
                 *self = Self::Inner(

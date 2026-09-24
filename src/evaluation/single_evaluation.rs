@@ -8,9 +8,8 @@ use crate::{
     catchable::cerr,
     evaluation::{RequiredFeatures, SelectableSource},
     spec::{
-        Array, EndThisTestAction, EndThisTestMode, Entity, EntityId, FatalError, Machine,
-        MissingValue, NetworkRequest, NetworkResponse, Numeric, RuntimeAction, RuntimeAny,
-        RuntimeValue, Selector, SpecializeFrom, UnfinishedMachine,
+        EndThisTestAction, Entity, EntityId, FatalError, Machine, MissingValue, NetworkRequest,
+        NetworkResponse, RuntimeAction, RuntimeAny, Selector, SpecializeFrom, UnfinishedMachine,
     },
 };
 

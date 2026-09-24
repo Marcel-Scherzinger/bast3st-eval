@@ -1,5 +1,3 @@
-use crate::spec::Selector;
-
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash, Default)]
 pub struct Features(u32);
 

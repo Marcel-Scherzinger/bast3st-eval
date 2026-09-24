@@ -11,7 +11,7 @@ use crate::{
     Features,
     catchable::cerr,
     spec::{
-        Entity, EntityId, RuntimeAction, Selector, Text,
+        EntityId, Selector, Text,
         runtime::{CompiledRegex, NetworkRequest, SpecificTaskRequest},
     },
 };

@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-use std::{collections::BTreeMap, sync::Arc};
 mod collections;
 mod criterion;
 mod marker;
@@ -7,24 +5,18 @@ mod network;
 mod selector;
 mod tasks;
 
+pub use crate::spec::RuntimeAction;
 pub use crate::spec::runtime::criterion::{InnerRuntimeCriterion, RuntimeCriterion};
-pub use crate::spec::{EndThisTestAction, RuntimeAction};
-use bitflags::iter::IterNames;
 pub use collections::{Array, MappingOrArray, RealMapping};
-use derive_more::{Deref, From};
-use either::Either;
+use derive_more::From;
 pub(super) use marker::{CheapBorrowFromAny, ClarifiedCerrMerging, PossibleRuntimeValue};
 pub(crate) use marker::{MachineReturnVal, SpecializeFrom};
 pub use network::{InnerNetworkRequest, NetworkRequest, NetworkResponse};
 pub use selector::Selector;
-use serde_json::Map;
 pub use tasks::{CompiledRegex, SpecificTaskRequest};
 
 use crate::spec::Numeric;
-use crate::{
-    catchable::cerr,
-    spec::{MapKey, PrimitiveValue},
-};
+use crate::{catchable::cerr, spec::PrimitiveValue};
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, From)]
 pub enum RuntimeAny<E = cerr> {
@@ -72,31 +64,6 @@ pub enum RuntimeValue {
     #[debug("Prim({_0:?})")]
     Prim(PrimitiveValue),
     Comp(MappingOrArray),
-}
-
-impl RuntimeValue {
-    pub(crate) fn to_mapping_with(
-        &self,
-        key: impl Into<MapKey>,
-        value: impl Into<RuntimeValue>,
-    ) -> RealMapping {
-        let key = key.into();
-        let value = value.into();
-        let col: BTreeMap<MapKey, RuntimeValue> = match self {
-            Self::Prim(prim) => {
-                let mut col = BTreeMap::default();
-                col.insert("".into(), prim.clone().into());
-                col.insert(key, value);
-                col
-            }
-            Self::Comp(col) => {
-                let mut col = col.to_btreemap();
-                col.insert(key, value);
-                col
-            }
-        };
-        col.into()
-    }
 }
 
 impl<T> From<T> for RuntimeValue

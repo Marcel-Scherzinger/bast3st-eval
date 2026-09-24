@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 pub mod catchable;
 pub mod evaluation;
 pub mod spec;

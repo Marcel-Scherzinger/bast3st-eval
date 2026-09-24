@@ -1,7 +1,5 @@
 use std::borrow::Cow;
 
-use derive_more::Deref;
-
 use crate::{Features, evaluation::SelectableSource, spec::FatalError};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]

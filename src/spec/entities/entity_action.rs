@@ -5,9 +5,9 @@ use crate::{
     Features,
     evaluation::RequiredFeatures,
     spec::{
-        CriterionEntity, EndThisTestMode, EntityId, MachineConstruction, MachineConstructionN,
-        MapKey, MessageSendingLevel, MessageSeverity, PrimitiveValue, SetFlagMode, Text,
-        ValueReference, machine::Machine, runtime::RuntimeCriterion,
+        CriterionEntity, EndThisTestMode, EntityId, MachineConstruction, MapKey,
+        MessageSendingLevel, MessageSeverity, PrimitiveValue, SetFlagMode, Text, ValueReference,
+        machine::Machine, runtime::RuntimeCriterion,
     },
 };
 

@@ -1,9 +1,6 @@
-use std::{borrow::Cow, collections::BTreeMap};
+use std::borrow::Cow;
 
-use crate::spec::{
-    Array, Coremapping, FatalError, RealMapping, RuntimeAction, RuntimeAny, RuntimeValue, Selector,
-    SetFlagMode, Text,
-};
+use crate::spec::{Array, Coremapping, RealMapping, RuntimeAny, Selector};
 
 use super::{Features, SelectableSource};
 

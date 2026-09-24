@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     evaluation::RequiredFeatures,
-    spec::{Machine, RuntimeAny, Selector, Text},
+    spec::{Machine, RuntimeAny, Text},
 };
 
 pub use entity_action::*;

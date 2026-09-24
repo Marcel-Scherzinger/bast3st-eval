@@ -1,6 +1,7 @@
-use std::{borrow::Cow, collections::BTreeMap};
+use std::collections::BTreeMap;
 
 use either::Either;
+use rand::{Rng, SeedableRng};
 use scratch_test_interpreter::{
     Limits, RunError,
     default_state::{DefaultState, DefaultStateError},
@@ -15,8 +16,8 @@ use crate::{
         single_evaluation::EvalSignal,
     },
     spec::{
-        Array, EndThisTestAction, Entity, EntityId, GeneralTest, MapKey, PrimitiveValue,
-        RuntimeAction, RuntimeCriterion, RuntimeValue, Text,
+        Array, GeneralTest, MapKey, PrimitiveValue, RandomGeneration, RuntimeAction,
+        RuntimeCriterion, RuntimeValue, Text,
     },
 };
 
@@ -141,6 +142,17 @@ fn run_single_test_for_selectable<Hooks>(
     let interp = scratch_test_interpreter::Interpreter::new_restrictive();
 
     let mut state = DefaultState::from_doc(doc, settings.max_list_length().into());
+    // TODO: think about using another Rng for reproducible results
+    state.set_randoms(match random_generation {
+        RandomGeneration::Disabled => None,
+        RandomGeneration::EnabledWithSeed(seed) => {
+            Some(rand::prelude::StdRng::seed_from_u64(*seed))
+        }
+        RandomGeneration::Enabled => {
+            Some(rand::prelude::StdRng::seed_from_u64(rand::rng().next_u64()))
+        }
+    });
+
     if let Some(input) = input {
         let answers: Vec<std::sync::Arc<str>> = input
             .iter()
@@ -201,7 +213,7 @@ fn setup_initial_lists_and_vars<Hooks>(
     general: &GeneralTest<Hooks>,
 ) {
     let mut new_id = 0;
-    let mut new_id_str = String::new();
+    let mut new_id_str;
 
     if let Some(initial_vars) = general.initial_variables().as_ref() {
         let doc_vars: BTreeMap<&str, &scratch_test_model::Id> = doc
@@ -219,10 +231,10 @@ fn setup_initial_lists_and_vars<Hooks>(
                 loop {
                     new_id += 1;
                     new_id_str = format!("id{new_id}");
-                    if (doc_vars
+                    if doc_vars
                         .values()
                         .find(|x| ****x == *new_id_str.as_str())
-                        .is_none())
+                        .is_none()
                     {
                         break;
                     }
@@ -250,10 +262,10 @@ fn setup_initial_lists_and_vars<Hooks>(
                 loop {
                     new_id += 1;
                     new_id_str = format!("id{new_id}");
-                    if (doc_lists
+                    if doc_lists
                         .values()
                         .find(|x| ****x == *new_id_str.as_str())
-                        .is_none())
+                        .is_none()
                     {
                         break;
                     }

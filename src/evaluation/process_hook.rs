@@ -1,7 +1,3 @@
-use std::collections::BTreeMap;
-
-use derive_getters::Getters;
-use derive_more::Deref;
 use either::Either;
 
 use crate::{
@@ -10,10 +6,7 @@ use crate::{
         Context, Effects, SelectableSource, SingleEvaluation, SingleEvaluationError,
         single_evaluation::EvalSignal,
     },
-    spec::{
-        ActionEntity, CriterionEntity, EntityId, HookList, RuntimeAction, RuntimeCriterion,
-        RuntimeValue, Text,
-    },
+    spec::{ActionEntity, CriterionEntity, EntityId, HookList, RuntimeAction, RuntimeCriterion},
 };
 
 #[derive(Debug, thiserror::Error, PartialEq, PartialOrd, Clone)]
@@ -34,26 +27,9 @@ pub struct HookResult {
     pub(crate) criterion: Option<RuntimeCriterion>,
     // pub(crate) eval_signals: Option<StopEval>,
 }
-impl HookResult {
-    async fn from_run<Source: SelectableSource>(
-        context: &Context<'_, '_>,
-        source: Source,
-        features: Features,
-        crit: EntityId<CriterionEntity>,
-        act: EntityId<ActionEntity>,
-    ) -> Result<
-        (
-            Vec<RuntimeAction>,
-            Option<RuntimeCriterion>,
-            Option<EvalSignal>,
-        ),
-        HookFailure,
-    > {
-        execute_hook(context, source, features, crit, act).await
-    }
-}
 
 impl HookList {
+    #[allow(unused)]
     pub(crate) async fn run_all<'p, 'e, Source: SelectableSource>(
         &self,
         ctx: &Context<'p, 'e>,
@@ -67,6 +43,7 @@ impl HookList {
                 Err(failure) => tried.push(Err(failure)),
                 Ok((actions, criterion, signal)) => {
                     tried.push(Ok(HookResult { criterion }));
+                    eft.extend(actions);
 
                     if let Some(signal) = signal {
                         match &signal {

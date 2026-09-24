@@ -6,10 +6,10 @@ mod source_rundata;
 
 use std::borrow::Cow;
 
+#[allow(unused)]
 pub use crate::evaluation::features::RequiredFeatures;
 
 pub use sel_fal::*;
-pub use sel_merge::*;
 pub use source_effects::*;
 pub use source_flagdata::*;
 pub use source_rundata::*;
@@ -47,7 +47,7 @@ impl SelectableSource for () {
     async fn request<'a>(
         &'a self,
         selector: &Selector,
-        allowed_features: Features,
+        _allowed_features: Features,
     ) -> Result<Cow<'a, RuntimeAny>, FatalError> {
         Err(FatalError::RequestedSelectorValueNotAvailable(
             selector.clone(),

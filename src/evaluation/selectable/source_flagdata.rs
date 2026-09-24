@@ -4,7 +4,7 @@ use std::{
 };
 
 use crate::spec::{
-    Array, Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
+    Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
     RuntimeValue, Selector, SetFlagMode, Text,
 };
 
@@ -112,7 +112,7 @@ impl SelectableSource for FlagData {
     async fn request<'a>(
         &'a self,
         selector: &crate::spec::Selector,
-        allowed_features: Features,
+        _allowed_features: Features,
     ) -> Result<Cow<'a, RuntimeAny>, FatalError> {
         match selector {
             Selector::Coremap(Coremapping::Flags) => Ok(Cow::Borrowed(&self.flags)),

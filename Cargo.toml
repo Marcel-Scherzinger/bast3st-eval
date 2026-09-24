@@ -12,6 +12,7 @@ derive_more = { version = "2.1.1", features = ["add", "add_assign", "debug", "de
 either = { version = "1.18.0", features = ["serde"] }
 itertools = "0.15.0"
 log = "0.4.34"
+rand = "0.10.3"
 regex = "1.13.1"
 scratch-test-interpreter = { git = "https://github.com/marcel-scherzinger/scratch-test-interpreter", version = "0.1.0" }
 scratch-test-model = { git = "https://github.com/marcel-scherzinger/scratch-test-model", version = "0.1.0" }
