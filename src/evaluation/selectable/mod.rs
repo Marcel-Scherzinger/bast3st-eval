@@ -74,3 +74,17 @@ impl<A: SelectableSource> SelectableSource for &A {
         <A as SelectableSource>::request(self, selector, allowed_features).await
     }
 }
+
+impl<A: SelectableSource> SelectableSource for Option<A> {
+    async fn request<'a>(
+        &'a self,
+        selector: &Selector,
+        allowed_features: Features,
+    ) -> Result<Cow<'a, RuntimeAny>, FatalError> {
+        if let Some(x) = self {
+            x.request(selector, allowed_features).await
+        } else {
+            ().request(selector, allowed_features).await
+        }
+    }
+}
