@@ -3,9 +3,12 @@ use std::{
     collections::{BTreeMap, VecDeque},
 };
 
-use crate::spec::{
-    Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
-    RuntimeValue, Selector, SetFlagMode, Text,
+use crate::{
+    evaluation::Effects,
+    spec::{
+        Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
+        RuntimeValue, Selector, SetFlagMode, Text,
+    },
 };
 
 use super::{Features, SelectableSource};
@@ -150,26 +153,21 @@ impl<'a> Extend<&'a RuntimeAction> for FlagData {
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
-pub struct WithFlagData<T> {
+pub struct WithEffects<T> {
     data: T,
-    flags: FlagData,
+    effects: Effects,
 }
-impl<T> From<T> for WithFlagData<T> {
-    fn from(value: T) -> Self {
-        Self {
-            data: value,
-            flags: Default::default(),
-        }
+impl<T> WithEffects<T> {
+    pub fn new(data: T, effects: Effects) -> Self {
+        Self { data, effects }
     }
-}
-impl<T> WithFlagData<T> {
-    pub fn with_flags(self, flags: FlagData) -> Self {
+    pub fn with_flags(self, effects: Effects) -> Self {
         Self {
             data: self.data,
-            flags,
+            effects,
         }
     }
-    pub fn into_parts(self) -> (T, FlagData) {
-        (self.data, self.flags)
+    pub fn into_parts(self) -> (T, Effects) {
+        (self.data, self.effects)
     }
 }

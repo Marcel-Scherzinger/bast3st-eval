@@ -9,7 +9,7 @@ use crate::{
     spec::{FatalError, ProcessedAction, RuntimeAction, RuntimeAny},
 };
 
-#[derive(Debug, Default, Getters)]
+#[derive(Debug, Default, Getters, PartialEq, PartialOrd, Clone)]
 pub struct Effects {
     actions: Vec<ProcessedAction>,
     flags: FlagData,

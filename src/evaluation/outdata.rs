@@ -4,9 +4,7 @@ use crate::{
     evaluation::{
         JustFailTestRunError, Rundata, SingleEvaluationError, process_hook::FallibleHookResults,
     },
-    spec::{
-        AlternativeTestHooks, EndThisTestAction, MainTestHooks, ProcessedAction, RuntimeCriterion,
-    },
+    spec::{AlternativeTestHooks, EndThisTestAction, MainTestHooks, RuntimeCriterion},
 };
 
 pub struct PSpec {
@@ -18,7 +16,6 @@ pub struct PCategory {
 }
 pub struct PMainTest {
     pub(crate) general: PGeneralTest<MainTestHooks<FallibleHookResults>>,
-    pub(crate) actions: Vec<ProcessedAction>,
     pub(crate) tried_alternatives: Vec<PAlternativeTest>,
 }
 

@@ -20,7 +20,7 @@ pub struct Bast3StSpec {
     entities: BTreeMap<EntityId, Entity>,
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Getters)]
 pub struct Category {
     title: String,
     description: Option<String>,

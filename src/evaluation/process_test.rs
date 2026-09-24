@@ -4,7 +4,7 @@ use crate::{
     Features,
     evaluation::{
         Context, Effects, PAlternativeTest, PGeneralTest, PMainTest, ProcessedTestStatus,
-        SelectableSource, WithFlagData,
+        SelectableSource, WithEffects,
         single_evaluation::EvalSignal,
         testrun2selectable::{ActualTestResultStatus, FatalRunError, run_actual_test},
     },
@@ -69,7 +69,7 @@ impl PMainTest {
         ctx: &Context<'p, 'e>,
         test: &MainTest,
         fallback: Fallback,
-    ) -> Result<WithFlagData<PMainTest>, MainTestFailure> {
+    ) -> Result<WithEffects<PMainTest>, MainTestFailure> {
         process_main_test(ctx, test, fallback).await
     }
 }
@@ -78,7 +78,7 @@ async fn process_main_test<'p, 'e, Fallback: SelectableSource>(
     ctx: &Context<'p, 'e>,
     test: &MainTest,
     fallback: Fallback,
-) -> Result<WithFlagData<PMainTest>, MainTestFailure> {
+) -> Result<WithEffects<PMainTest>, MainTestFailure> {
     let hooks = test.general().hooks();
 
     let mut eft = Effects::default();
@@ -161,10 +161,7 @@ async fn process_main_test<'p, 'e, Fallback: SelectableSource>(
         main_status.maybe_overwrite_with_signal(sig);
     }
 
-    let (actions, flags) = eft.into_parts();
-
     let out = PMainTest {
-        actions,
         general: PGeneralTest {
             status: main_status,
             data: main_rundata,
@@ -177,7 +174,7 @@ async fn process_main_test<'p, 'e, Fallback: SelectableSource>(
         tried_alternatives,
     };
 
-    Ok(WithFlagData::from(out).with_flags(flags))
+    Ok(WithEffects::new(out, eft))
 }
 
 async fn try_alternative_tests_of_main<'p, 'e, Source: SelectableSource>(
