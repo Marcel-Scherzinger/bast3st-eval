@@ -1,8 +1,10 @@
 pub mod catchable;
 pub mod evaluation;
+pub mod messages;
 pub mod spec;
 
 pub use evaluation::Features;
+pub use messages::Messages;
 
 #[cfg(test)]
 mod tests {

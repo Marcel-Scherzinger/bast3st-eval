@@ -58,21 +58,21 @@ impl ActionEntity {
                 let severity = *severity;
                 let level = *level;
                 text.query(move |text: PrimitiveValue| {
-                    RuntimeAction::SendMsg {
+                    RuntimeAction::SendMsg(SendMsgAction {
                         text: text.into_text(),
                         severity,
                         level,
-                    }
+                    })
                     .into()
                 })
             }
             Self::EndThisTest { mode, explaination } => {
                 let mode = *mode;
                 explaination.query(move |explaination: PrimitiveValue| {
-                    RuntimeAction::EndThisTest {
+                    RuntimeAction::EndThisTest(EndThisTestAction {
                         mode,
                         explaination: explaination.into_text(),
-                    }
+                    })
                     .into()
                 })
             }
@@ -107,11 +107,11 @@ fn set_flag_act(
         })
     } else {
         value.query(move |value: PrimitiveValue| {
-            RuntimeAction::SetFlag {
+            RuntimeAction::SetFlag(SetFlagAction {
                 mode,
                 key: eval_keys,
                 value,
-            }
+            })
             .into()
         })
     }
@@ -129,37 +129,19 @@ impl RequiredFeatures for ActionEntity {
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub enum RuntimeAction {
-    SendMsg {
-        text: Text,
-        severity: MessageSeverity,
-        level: MessageSendingLevel,
-    },
-    EndThisTest {
-        mode: EndThisTestMode,
-        explaination: Text,
-    },
-
-    SetFlag {
-        mode: SetFlagMode,
-        key: Vec<MapKey>,
-        value: PrimitiveValue,
-    },
+    SendMsg(SendMsgAction),
+    EndThisTest(EndThisTestAction),
+    SetFlag(SetFlagAction),
 }
-
-impl RuntimeAction {
-    pub fn into_processed(self) -> Result<ProcessedAction, RuntimeAction> {
-        Ok(match self {
-            RuntimeAction::SendMsg {
-                text,
-                severity,
-                level,
-            } => ProcessedAction::SendMsg(SendMsgAction {
-                level,
-                severity,
-                text,
-            }),
-            Self::EndThisTest { .. } | Self::SetFlag { .. } => return Err(self),
-        })
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
+pub struct SetFlagAction {
+    mode: SetFlagMode,
+    key: Vec<MapKey>,
+    value: PrimitiveValue,
+}
+impl SetFlagAction {
+    pub fn into_parts(self) -> (SetFlagMode, Vec<MapKey>, PrimitiveValue) {
+        (self.mode, self.key, self.value)
     }
 }
 
@@ -195,6 +177,4 @@ impl MessageSeverity {
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
-pub enum ProcessedAction {
-    SendMsg(SendMsgAction),
-}
+pub enum ProcessedAction {}

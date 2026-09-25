@@ -145,9 +145,10 @@ impl SelectableSource for FlagData {
 impl<'a> Extend<&'a RuntimeAction> for FlagData {
     fn extend<T: IntoIterator<Item = &'a RuntimeAction>>(&mut self, actions: T) {
         let actions = actions.into_iter().flat_map(|action: &'a RuntimeAction| {
-            if let RuntimeAction::SetFlag { mode, key, value } = action {
+            if let RuntimeAction::SetFlag(action) = action {
+                let (mode, key, value) = action.clone().into_parts();
                 match mode {
-                    SetFlagMode::Keep => Some((key.clone(), value.clone())),
+                    SetFlagMode::Keep => Some((key, value)),
                 }
             } else {
                 None

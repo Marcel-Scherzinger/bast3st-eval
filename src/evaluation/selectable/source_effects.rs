@@ -1,28 +1,30 @@
 use std::borrow::Cow;
 
 use derive_getters::Getters;
+use either::Either;
 use itertools::Itertools;
 
 use crate::{
-    Features,
+    Features, Messages,
     evaluation::{FlagData, SelectableSource},
-    spec::{FatalError, ProcessedAction, RuntimeAction, RuntimeAny},
+    messages::{AnyMessages, MsgType},
+    spec::{FatalError, RuntimeAction, RuntimeAny, SendMsgAction},
 };
 
 #[derive(Debug, Default, Getters, PartialEq, PartialOrd, Clone)]
 pub struct Effects {
-    actions: Vec<ProcessedAction>,
     flags: FlagData,
+    messages: AnyMessages,
 }
 
 impl Effects {
-    pub fn into_parts(self) -> (Vec<ProcessedAction>, FlagData) {
-        (self.actions, self.flags)
-    }
     pub fn append(&mut self, other: Effects) {
-        self.actions.extend(other.actions);
+        self.messages.extend(other.messages);
         let flags = std::mem::take(&mut self.flags);
         self.flags = flags.with_append(other.flags);
+    }
+    pub fn take_messages<L: MsgType>(&mut self) -> Messages<L> {
+        self.messages.drain_msg_of()
     }
 }
 
@@ -38,10 +40,15 @@ impl SelectableSource for Effects {
 
 impl Extend<RuntimeAction> for Effects {
     fn extend<T: IntoIterator<Item = RuntimeAction>>(&mut self, iter: T) {
-        let (other, processed): (Vec<RuntimeAction>, Vec<ProcessedAction>) = iter
+        let (other, messages): (Vec<RuntimeAction>, Vec<SendMsgAction>) = iter
             .into_iter()
-            .partition_map(|item| item.into_processed().into());
+            .flat_map(|item| match item {
+                RuntimeAction::SendMsg(send) => Some(Either::Right(send)),
+                RuntimeAction::EndThisTest(_) => None,
+                act @ RuntimeAction::SetFlag { .. } => Some(Either::Left(act)),
+            })
+            .partition_map(|x| x);
         self.flags.extend(&other);
-        self.actions.extend(processed);
+        self.messages.extend(messages);
     }
 }

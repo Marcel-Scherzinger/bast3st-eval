@@ -1,7 +1,9 @@
 mod context;
 mod features;
 mod outdata;
+mod process_cat;
 mod process_hook;
+mod process_spec;
 mod process_test;
 mod selectable;
 mod single_evaluation;

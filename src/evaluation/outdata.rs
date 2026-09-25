@@ -1,20 +1,29 @@
 use derive_more::From;
 
 use crate::{
+    Messages,
     evaluation::{
         JustFailTestRunError, Rundata, SingleEvaluationError, process_hook::FallibleHookResults,
     },
-    spec::{AlternativeTestHooks, EndThisTestAction, MainTestHooks, RuntimeCriterion},
+    spec::{
+        AlternativeTest, AlternativeTestHooks, Bast3StSpec, Category, CategoryHooks,
+        EndThisTestAction, MainTest, MainTestHooks, RuntimeCriterion, SpecHooks,
+    },
 };
 
 pub struct PSpec {
+    pub(crate) messages: Messages<Bast3StSpec>,
     pub(crate) categories: Vec<PCategory>,
+    pub(crate) hooks: SpecHooks<FallibleHookResults>,
 }
 
 pub struct PCategory {
+    pub(crate) messages: Messages<Category>,
     pub(crate) tests: Vec<PMainTest>,
+    pub(crate) hooks: CategoryHooks<FallibleHookResults>,
 }
 pub struct PMainTest {
+    pub(crate) messages: Messages<MainTest>,
     pub(crate) general: PGeneralTest<MainTestHooks<FallibleHookResults>>,
     pub(crate) tried_alternatives: Vec<PAlternativeTest>,
 }
@@ -28,6 +37,7 @@ impl PMainTest {
 }
 
 pub struct PAlternativeTest {
+    pub(crate) messages: Messages<AlternativeTest>,
     pub(crate) general: PGeneralTest<AlternativeTestHooks<FallibleHookResults>>,
 }
 

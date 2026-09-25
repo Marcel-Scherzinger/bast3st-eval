@@ -245,15 +245,10 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
 
                             let mut return_early = Ok(());
                             for action in meta.into_actions() {
-                                if let RuntimeAction::EndThisTest {
-                                    mode,
-                                    ref explaination,
-                                } = action
+                                if let RuntimeAction::EndThisTest(ref end) = action
                                     && return_early.is_ok()
                                 {
-                                    return_early = Err(EvalSignal::EndTest(
-                                        mode.action_with(explaination.clone()),
-                                    ));
+                                    return_early = Err(EvalSignal::EndTest(end.clone()));
                                 }
                                 self.actions.push(action);
                             }

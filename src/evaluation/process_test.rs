@@ -64,7 +64,6 @@ fn process_test_status(
 }
 
 impl PMainTest {
-    #[allow(unused)]
     pub async fn new<Fallback: SelectableSource>(
         ctx: &Context,
         test: &MainTest,
@@ -114,6 +113,8 @@ async fn process_main_test<Fallback: SelectableSource>(
         let status = process_test_status(main_result.status, &mut eft)?;
         (status, Some(main_result.testdata))
     };
+    // take "current"-level messages for main, don't move this line
+    let mut messages = eft.take_messages();
     // #############################################
     // ### Initiate alternatives if test proceedable
     // #############################################
@@ -161,7 +162,9 @@ async fn process_main_test<Fallback: SelectableSource>(
         main_status.maybe_overwrite_with_signal(sig);
     }
 
+    messages.extend(eft.take_messages());
     let out = PMainTest {
+        messages,
         general: PGeneralTest {
             status: main_status,
             data: main_rundata,
@@ -234,6 +237,7 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
 
         let no_other_alternatives_needed = alt_status.is_successful();
         tried_alternatives.push(PAlternativeTest {
+            messages: eft.take_messages(),
             general: PGeneralTest {
                 status: alt_status,
                 data: alt_rundata,

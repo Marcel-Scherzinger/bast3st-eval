@@ -95,6 +95,7 @@ impl<A: SelectableSource> SelectableSource for std::sync::Arc<A> {
         selector: &Selector,
         allowed_features: Features,
     ) -> Result<Cow<'a, RuntimeAny>, FatalError> {
+        use std::ops::Deref;
         self.deref().request(selector, allowed_features).await
     }
 }
