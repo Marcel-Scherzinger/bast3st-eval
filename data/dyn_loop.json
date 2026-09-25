@@ -94,7 +94,8 @@
       "sup": 6
     },
     "11": {
-      "op": "length",
+      "op": "property",
+      "p": "length",
       "v": 3
     },
     "12": {

@@ -174,12 +174,22 @@ pub enum ValueEntity {
         #[serde(rename = "e")]
         else_: ValueReference,
     },
-    Length {
+    Property {
+        #[serde(rename = "p")]
+        perspective: PropertyPerspective,
         // can also be mapping/array
         #[serde(rename = "v")]
         value: ValueReference,
     },
 }
+
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PropertyPerspective {
+    Sum,
+    Length,
+}
+
 fn val(x: impl Into<RuntimeValue>) -> Machine<RuntimeValue> {
     x.into().into()
 }
@@ -295,15 +305,27 @@ impl ValueEntity {
                     reversed_json,
                 )
             }
-            Self::Length { value } => value.query(|value: RuntimeValue| {
-                let length: usize = match value {
-                    RuntimeValue::Comp(ma) => ma.len(),
-                    RuntimeValue::Prim(PrimitiveValue::Str(text)) => text.chars().count(),
-                    _ => return cerr::typing_notIterable.into(),
-                };
-                let length = length.try_into().unwrap_or(i64::MAX);
-                RuntimeValue::Prim(PrimitiveValue::Number(SNumber::Int(length))).into()
-            }),
+            Self::Property { perspective, value } => {
+                let perspective = *perspective;
+                value.query(move |value: RuntimeValue| match perspective {
+                    PropertyPerspective::Sum => {
+                        let sum: Numeric = match value {
+                            RuntimeValue::Comp(ma) => ma.sum(),
+                            value @ RuntimeValue::Prim(_) => [value].iter().sum(),
+                        };
+                        RuntimeValue::Prim(PrimitiveValue::Number(sum)).into()
+                    }
+                    PropertyPerspective::Length => {
+                        let length: usize = match value {
+                            RuntimeValue::Comp(ma) => ma.len(),
+                            RuntimeValue::Prim(PrimitiveValue::Str(text)) => text.chars().count(),
+                            _ => return cerr::typing_notIterable.into(),
+                        };
+                        let length = length.try_into().unwrap_or(i64::MAX);
+                        RuntimeValue::Prim(PrimitiveValue::Number(SNumber::Int(length))).into()
+                    }
+                })
+            }
             Self::FirstCaptureOfRegex {
                 pattern,
                 sup,
