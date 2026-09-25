@@ -4,11 +4,11 @@ use derive_getters::Getters;
 use serde::{Deserialize, Serialize};
 
 use crate::spec::{
-    AlternativeTestHooks, CriterionEntity, Entity, EntityId, MainTestHooks, PrimitiveValue,
-    RandomGeneration, hooks::SpecHooks,
+    AlternativeTestHooks, CategoryHooks, CriterionEntity, Entity, EntityId, MainTestHooks,
+    PrimitiveValue, RandomGeneration, hooks::SpecHooks,
 };
 
-#[derive(Debug, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Clone, Getters)]
 pub struct Bast3StSpec {
     title: String,
     description: Option<String>,
@@ -26,6 +26,8 @@ pub struct Category {
     description: Option<String>,
     #[serde(default)]
     tests: Vec<MainTest>,
+    #[serde(default)]
+    hooks: CategoryHooks,
 }
 #[derive(Debug, PartialEq, Serialize, Deserialize, Getters, Clone)]
 pub struct MainTest {
@@ -63,11 +65,5 @@ impl AsRef<GeneralTest<MainTestHooks>> for MainTest {
 impl AsRef<GeneralTest<AlternativeTestHooks>> for AlternativeTest {
     fn as_ref(&self) -> &GeneralTest<AlternativeTestHooks> {
         &self.general
-    }
-}
-
-impl Bast3StSpec {
-    pub fn entities(&self) -> &BTreeMap<EntityId, Entity> {
-        &self.entities
     }
 }

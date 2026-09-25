@@ -8,7 +8,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::spec::{ActionEntity, CriterionEntity, EntityId};
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Clone)]
+#[derive(
+    Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Clone, Getters,
+)]
 pub struct SpecHooks<HL = HookList> {
     #[serde(rename = "before-all-categories", default)]
     pub(crate) before_all_categories: HL,
@@ -16,7 +18,9 @@ pub struct SpecHooks<HL = HookList> {
     pub(crate) after_all_categories: HL,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Clone)]
+#[derive(
+    Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Default, Clone, Getters,
+)]
 pub struct CategoryHooks<HL = HookList> {
     #[serde(rename = "before-all-tests", default)]
     pub(crate) before_all_tests: HL,
