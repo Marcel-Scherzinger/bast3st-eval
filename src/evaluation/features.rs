@@ -22,6 +22,12 @@ bitflags::bitflags! {
         /// Send message to the current entity level
         const SENDMSG_CURRENT = 1 << 5;
 
+        const PermittedFEAT_SpecHook = Self::SENDMSG_SPEC.0 | Self::SENDMSG_CURRENT.0;
+        const PermittedFEAT_CategoryHook =
+              Self::SENDMSG_SPEC.0
+            | Self::SENDMSG_CATEGORY.0
+            | Self::SENDMSG_CURRENT.0;
+
         const PermittedFEAT_PreTestHook =
               Self::END_THIS_TEST.0
             | Self::SENDMSG_SPEC.0
