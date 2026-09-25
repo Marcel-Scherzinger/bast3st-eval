@@ -13,7 +13,7 @@ mod tests {
     use crate::{
         Features,
         evaluation::{SelectableSource, SingleEvaluation},
-        spec::{self, Array, Numeric, RuntimeAny, RuntimeValue},
+        spec::{self, Array, RuntimeAny, RuntimeValue},
     };
 
     pub struct DummyData {
@@ -22,8 +22,8 @@ mod tests {
     impl SelectableSource for DummyData {
         async fn request<'a>(
             &'a self,
-            selector: &spec::Selector,
-            allowed_features: Features,
+            _selector: &spec::Selector,
+            _allowed_features: Features,
         ) -> Result<Cow<'a, spec::RuntimeAny>, spec::FatalError> {
             Ok(Cow::Borrowed(&self.data))
         }
@@ -44,7 +44,7 @@ mod tests {
         let selectable = DummyData {
             data: RuntimeAny::from(output),
         };
-        let mut eval =
+        let eval =
             SingleEvaluation::new(entities, 13.into(), &selectable, Features::all()).unwrap();
         let eval = eval.run_to_end_with_early_return().await;
         panic!(

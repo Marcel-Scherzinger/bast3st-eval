@@ -34,10 +34,12 @@ impl Entity {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone)]
+#[derive(derive_more::Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum ValueReference {
+    #[debug("{_0:?}")]
     LitString(Text),
+    #[debug("{_0:?}")]
     EntityId(EntityId<ValueEntity>),
 }
 
