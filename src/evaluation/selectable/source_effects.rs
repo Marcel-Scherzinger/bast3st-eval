@@ -58,3 +58,22 @@ impl Extend<RuntimeAction> for Effects {
         self.notice.extend(notice);
     }
 }
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
+pub struct WithEffects<T> {
+    data: T,
+    effects: Effects,
+}
+impl<T> WithEffects<T> {
+    pub fn new(data: T, effects: Effects) -> Self {
+        Self { data, effects }
+    }
+    pub fn with_flags(self, effects: Effects) -> Self {
+        Self {
+            data: self.data,
+            effects,
+        }
+    }
+    pub fn into_parts(self) -> (T, Effects) {
+        (self.data, self.effects)
+    }
+}

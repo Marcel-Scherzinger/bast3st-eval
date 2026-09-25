@@ -3,47 +3,65 @@ use std::{
     collections::{BTreeMap, VecDeque},
 };
 
-use crate::{
-    evaluation::Effects,
-    spec::{
-        Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
-        RuntimeValue, Selector, SetFlagMode, Text,
-    },
+use crate::spec::{
+    Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
+    RuntimeValue, Selector, SetFlagMode, Text,
 };
 
 use super::{Features, SelectableSource};
 
-#[derive(Debug, PartialEq, PartialOrd, Clone)]
-pub struct FlagData {
-    flags: RuntimeAny, // RealMapping
+#[derive(derive_more::Debug, PartialEq, PartialOrd, Clone)]
+pub struct MappingData<T> {
+    data: RuntimeAny, // RealMapping
+    #[debug(skip)]
+    _phantom: std::marker::PhantomData<T>,
 }
 
-impl Default for FlagData {
+#[derive(derive_more::Debug, PartialEq, PartialOrd, Clone)]
+pub struct SourceFlag(());
+#[derive(derive_more::Debug, PartialEq, PartialOrd, Clone)]
+pub struct SourceParam(());
+
+pub type FlagData = MappingData<SourceFlag>;
+pub type ParamData = MappingData<SourceParam>;
+
+impl<X> Default for MappingData<X> {
     fn default() -> Self {
         Self {
-            flags: RuntimeAny::Value(RealMapping::default().into()),
+            data: RuntimeAny::Value(RealMapping::default().into()),
+            _phantom: Default::default(),
         }
     }
 }
 
-impl From<BTreeMap<MapKey, RuntimeValue>> for FlagData {
+impl<X> From<BTreeMap<MapKey, RuntimeValue>> for MappingData<X> {
     fn from(value: BTreeMap<MapKey, RuntimeValue>) -> Self {
         Self {
-            flags: RuntimeAny::Value(RealMapping::from(value).into()),
+            data: RuntimeAny::Value(RealMapping::from(value).into()),
+            _phantom: Default::default(),
         }
     }
 }
 
-impl From<BTreeMap<Text, RuntimeValue>> for FlagData {
+impl<X> From<RealMapping> for MappingData<X> {
+    fn from(value: RealMapping) -> Self {
+        Self {
+            data: RuntimeAny::Value(value.into()),
+            _phantom: Default::default(),
+        }
+    }
+}
+
+impl<X> From<BTreeMap<Text, RuntimeValue>> for MappingData<X> {
     fn from(value: BTreeMap<Text, RuntimeValue>) -> Self {
         Self::default().extended(value)
     }
 }
 
-impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(K, V)> for FlagData {
+impl<X, K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(K, V)> for MappingData<X> {
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         let flags: RealMapping = self.as_ref().clone();
-        self.flags = flags
+        self.data = flags
             .with_new_keys(
                 iter.into_iter()
                     .map(|(text, val)| (vec![text.into()].into_iter().collect(), val.into())),
@@ -52,10 +70,10 @@ impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(K, V)> for FlagData {
     }
 }
 
-impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(VecDeque<K>, V)> for FlagData {
+impl<X, K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(VecDeque<K>, V)> for MappingData<X> {
     fn extend<T: IntoIterator<Item = (VecDeque<K>, V)>>(&mut self, iter: T) {
         let flags: RealMapping = self.as_ref().clone();
-        self.flags = flags
+        self.data = flags
             .with_new_keys(
                 iter.into_iter()
                     .map(|(text, val)| (text.into_iter().map(|x| x.into()).collect(), val.into())),
@@ -64,10 +82,10 @@ impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(VecDeque<K>, V)> for FlagDa
     }
 }
 
-impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(Vec<K>, V)> for FlagData {
+impl<X, K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(Vec<K>, V)> for MappingData<X> {
     fn extend<T: IntoIterator<Item = (Vec<K>, V)>>(&mut self, iter: T) {
         let flags: RealMapping = self.as_ref().clone();
-        self.flags = flags
+        self.data = flags
             .with_new_keys(
                 iter.into_iter()
                     .map(|(text, val)| (text.into_iter().map(|x| x.into()).collect(), val.into())),
@@ -76,7 +94,7 @@ impl<K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(Vec<K>, V)> for FlagData {
     }
 }
 
-impl FlagData {
+impl<X> MappingData<X> {
     pub fn extended<E>(mut self, other: impl IntoIterator<Item = E>) -> Self
     where
         Self: Extend<E>,
@@ -98,11 +116,11 @@ impl FlagData {
         self.extend(std::iter::once((key.into(), value)));
     }
 }
-impl AsRef<RealMapping> for FlagData {
+impl<X> AsRef<RealMapping> for MappingData<X> {
     fn as_ref(&self) -> &RealMapping {
         if let RuntimeAny::Value(RuntimeValue::Comp(crate::spec::MappingOrArray::Mapping(
             mapping,
-        ))) = &self.flags
+        ))) = &self.data
         {
             mapping
         } else {
@@ -110,9 +128,35 @@ impl AsRef<RealMapping> for FlagData {
         }
     }
 }
-impl From<FlagData> for RealMapping {
-    fn from(value: FlagData) -> Self {
+impl<X> From<MappingData<X>> for RealMapping {
+    fn from(value: MappingData<X>) -> Self {
         value.as_ref().clone()
+    }
+}
+
+impl SelectableSource for ParamData {
+    async fn request<'a>(
+        &'a self,
+        selector: &crate::spec::Selector,
+        _allowed_features: Features,
+    ) -> Result<Cow<'a, RuntimeAny>, FatalError> {
+        match selector {
+            Selector::Coremap(Coremapping::Param) => Ok(Cow::Borrowed(&self.data)),
+            Selector::CoremapItem {
+                mapping: Coremapping::Param,
+                key,
+            } => Ok(Cow::Owned(
+                self.as_ref()
+                    .get_by_seq(key)
+                    .transpose()
+                    .map(|x| x.cloned().into_runtimeany())
+                    .unwrap_or(self.data.clone()),
+            )),
+
+            Selector::Coremap(_) | Selector::CoremapItem { .. } => {
+                Self::mark_fallback_need(selector.clone())
+            }
+        }
     }
 }
 
@@ -123,7 +167,7 @@ impl SelectableSource for FlagData {
         _allowed_features: Features,
     ) -> Result<Cow<'a, RuntimeAny>, FatalError> {
         match selector {
-            Selector::Coremap(Coremapping::Flags) => Ok(Cow::Borrowed(&self.flags)),
+            Selector::Coremap(Coremapping::Flags) => Ok(Cow::Borrowed(&self.data)),
             Selector::CoremapItem {
                 mapping: Coremapping::Flags,
                 key,
@@ -132,7 +176,7 @@ impl SelectableSource for FlagData {
                     .get_by_seq(key)
                     .transpose()
                     .map(|x| x.cloned().into_runtimeany())
-                    .unwrap_or(self.flags.clone()),
+                    .unwrap_or(self.data.clone()),
             )),
 
             Selector::Coremap(_) | Selector::CoremapItem { .. } => {
@@ -142,7 +186,7 @@ impl SelectableSource for FlagData {
     }
 }
 
-impl<'a> Extend<&'a RuntimeAction> for FlagData {
+impl<'a, X> Extend<&'a RuntimeAction> for MappingData<X> {
     fn extend<T: IntoIterator<Item = &'a RuntimeAction>>(&mut self, actions: T) {
         let actions = actions.into_iter().flat_map(|action: &'a RuntimeAction| {
             if let RuntimeAction::SetFlag(action) = action {
@@ -155,25 +199,5 @@ impl<'a> Extend<&'a RuntimeAction> for FlagData {
             }
         });
         self.extend(actions);
-    }
-}
-
-#[derive(Debug, PartialEq, PartialOrd, Clone)]
-pub struct WithEffects<T> {
-    data: T,
-    effects: Effects,
-}
-impl<T> WithEffects<T> {
-    pub fn new(data: T, effects: Effects) -> Self {
-        Self { data, effects }
-    }
-    pub fn with_flags(self, effects: Effects) -> Self {
-        Self {
-            data: self.data,
-            effects,
-        }
-    }
-    pub fn into_parts(self) -> (T, Effects) {
-        (self.data, self.effects)
     }
 }
