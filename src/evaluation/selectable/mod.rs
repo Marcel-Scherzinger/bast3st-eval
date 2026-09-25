@@ -88,3 +88,13 @@ impl<A: SelectableSource> SelectableSource for Option<A> {
         }
     }
 }
+
+impl<A: SelectableSource> SelectableSource for std::sync::Arc<A> {
+    async fn request<'a>(
+        &'a self,
+        selector: &Selector,
+        allowed_features: Features,
+    ) -> Result<Cow<'a, RuntimeAny>, FatalError> {
+        self.deref().request(selector, allowed_features).await
+    }
+}
