@@ -5,7 +5,8 @@ use crate::{
     catchable::cerr,
     spec::{
         ActionEntity, Coremapping, CriterionEntity, EntityId, FatalError, MapKey, MappingOrArray,
-        NetworkMethod, Numeric, PrimitiveValue, RealMapping, RuntimeAction, Text, ValueReference,
+        NetworkMethod, Numeric, PrimitiveValue, PropertyPerspective, RealMapping, RuntimeAction,
+        Text, ValueReference,
         machine::{Machine, MachineConstruction, MachineConstructionN},
         runtime::{
             Array, ClarifiedCerrMerging, CompiledRegex, NetworkRequest, NetworkResponse,
@@ -181,13 +182,6 @@ pub enum ValueEntity {
         #[serde(rename = "v")]
         value: ValueReference,
     },
-}
-
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum PropertyPerspective {
-    Sum,
-    Length,
 }
 
 fn val(x: impl Into<RuntimeValue>) -> Machine<RuntimeValue> {

@@ -6,7 +6,7 @@ use crate::{
     catchable::cerr,
     spec::{
         ActionEntity, EntityId, MachineConstruction, MachineConstructionN, MappingOrArray, Numeric,
-        PrimitiveValue, RuntimeAction, Text, ValueReference,
+        PrimitiveValue, RuntimeAction, SpecialCritVariant, Text, ValueReference,
         machine::Machine,
         runtime::{
             CompiledRegex, InnerRuntimeCriterion, MaybeEval, RuntimeAny, RuntimeCriterion,
@@ -148,6 +148,12 @@ pub enum CriterionEntity {
         then_: EntityId<CriterionEntity>,
         #[serde(rename = "e")]
         else_: EntityId<CriterionEntity>,
+    },
+    SpecialCrit {
+        #[serde(rename = "fexp")]
+        failure_explaination: Option<ValueReference>,
+        #[serde(rename = "v")]
+        variant: SpecialCritVariant,
     },
 }
 
@@ -291,6 +297,28 @@ impl CriterionEntity {
                             .into()
                     })
                 })
+            }
+            Self::SpecialCrit {
+                failure_explaination,
+                variant,
+            } => {
+                let variant = *variant;
+                failure_explaination
+                    .clone()
+                    .query(move |failure_explaination: Option<Text>| {
+                        match variant {
+                            SpecialCritVariant::NeverFulfilled => {
+                                RuntimeCriterion::new_unfulfilled(
+                                    failure_explaination,
+                                    InnerRuntimeCriterion::SpecialCrit { variant },
+                                )
+                            }
+                            SpecialCritVariant::AlwaysFulfilled => RuntimeCriterion::new_fulfilled(
+                                InnerRuntimeCriterion::SpecialCrit { variant },
+                            ),
+                        }
+                        .into()
+                    })
             }
 
             Self::MatchesRegex {

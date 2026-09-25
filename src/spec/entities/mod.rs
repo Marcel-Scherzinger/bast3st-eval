@@ -82,6 +82,21 @@ pub enum MessageSendingLevel {
     Current,
 }
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PropertyPerspective {
+    Sum,
+    Length,
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Serialize, Deserialize, Clone, Copy)]
+pub enum SpecialCritVariant {
+    #[serde(rename = "fulfilled")]
+    AlwaysFulfilled,
+    #[serde(rename = "not-fulfilled")]
+    NeverFulfilled,
+}
+
 impl RequiredFeatures for MessageSendingLevel {
     fn required_features(&self) -> crate::Features {
         use crate::Features;

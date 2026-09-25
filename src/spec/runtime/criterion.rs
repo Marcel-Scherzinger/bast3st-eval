@@ -1,7 +1,8 @@
 use crate::{
     catchable::cerr,
     spec::{
-        MachineConstruction, Numeric, PrimitiveValue, RuntimeAction, Text, ValueReference,
+        MachineConstruction, Numeric, PrimitiveValue, RuntimeAction, SpecialCritVariant, Text,
+        ValueReference,
         machine::Machine,
         runtime::{MaybeEval, RuntimeValue},
     },
@@ -148,5 +149,8 @@ pub enum InnerRuntimeCriterion {
         if_: Box<RuntimeCriterion>,
         selected_branch: Box<RuntimeCriterion>,
         other_branch: Box<MaybeEval<RuntimeCriterion>>,
+    },
+    SpecialCrit {
+        variant: SpecialCritVariant,
     },
 }
