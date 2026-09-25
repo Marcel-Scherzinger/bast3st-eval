@@ -48,9 +48,11 @@ impl PCategory {
             for fut in test_futures {
                 let (test, test_effects) = fut.await??.into_parts();
                 p_tests.push(test);
+                log::trace!("effects of finished test: {test_effects:?}");
                 eft.append(test_effects);
             }
         }
+        log::trace!("category effects after test runs: {eft:?}");
 
         let (after_all_tests, sig) = category
             .hooks()

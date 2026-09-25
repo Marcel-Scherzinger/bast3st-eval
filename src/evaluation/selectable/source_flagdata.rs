@@ -86,10 +86,11 @@ impl<X, K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(Vec<K>, V)> for MappingD
     fn extend<T: IntoIterator<Item = (Vec<K>, V)>>(&mut self, iter: T) {
         let flags: RealMapping = self.as_ref().clone();
         self.data = flags
-            .with_new_keys(
-                iter.into_iter()
-                    .map(|(text, val)| (text.into_iter().map(|x| x.into()).collect(), val.into())),
-            )
+            .with_new_keys(iter.into_iter().map(|(text, val)| {
+                let text = text.into_iter().map(|x| x.into()).collect();
+                let val = val.into();
+                (text, val)
+            }))
             .into();
     }
 }
@@ -104,8 +105,10 @@ impl<X> MappingData<X> {
     }
     pub fn with_append(self, other: FlagData) -> Self {
         let m: RealMapping = self.as_ref().clone();
-        m.with_merged(other.as_ref().as_ref());
-        self
+        Self {
+            data: m.with_merged(other.as_ref().as_ref()).into(),
+            _phantom: Default::default(),
+        }
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&MapKey, &RuntimeValue)> {
@@ -186,7 +189,7 @@ impl SelectableSource for FlagData {
     }
 }
 
-impl<'a, X> Extend<&'a RuntimeAction> for MappingData<X> {
+impl<'a> Extend<&'a RuntimeAction> for MappingData<SourceFlag> {
     fn extend<T: IntoIterator<Item = &'a RuntimeAction>>(&mut self, actions: T) {
         let actions = actions.into_iter().flat_map(|action: &'a RuntimeAction| {
             if let RuntimeAction::SetFlag(action) = action {

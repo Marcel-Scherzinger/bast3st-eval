@@ -10,13 +10,13 @@ use crate::{
 
 #[derive(derive_more::Debug, Clone)]
 pub struct Context {
-    max_list_length: u32,
-    limits: Limits,
-    doc: ProjectDoc,
-    initial_block: Id,
-    entities: Arc<BTreeMap<EntityId, Entity>>,
+    pub max_list_length: u32,
+    pub limits: Limits,
+    pub doc: ProjectDoc,
+    pub initial_block: Id,
+    pub entities: Arc<BTreeMap<EntityId, Entity>>,
     #[debug("allowed_network: ...")]
-    allowed_network: AllowedNetClosure,
+    pub allowed_network: AllowedNetClosure,
 }
 impl Context {
     pub fn entities(&self) -> &BTreeMap<EntityId, Entity> {

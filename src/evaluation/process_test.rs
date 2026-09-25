@@ -147,11 +147,11 @@ async fn process_main_test<Fallback: SelectableSource>(
     // #########################################
     // ### Hooks: after_alternatives
     // #########################################
-    let mut after_alternatives = Default::default();
+    let mut after_complete = Default::default();
     if main_status.proceedable() {
         let sig;
-        (after_alternatives, sig) = hooks
-            .after_alternatives()
+        (after_complete, sig) = hooks
+            .after_complete()
             .run_all(
                 ctx,
                 &mut eft,
@@ -171,7 +171,7 @@ async fn process_main_test<Fallback: SelectableSource>(
             hooks: MainTestHooks {
                 before_main,
                 before_alternatives,
-                after_alternatives,
+                after_complete,
             },
         },
         tried_alternatives,

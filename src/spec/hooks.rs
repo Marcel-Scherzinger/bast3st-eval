@@ -36,8 +36,8 @@ pub struct MainTestHooks<HL = HookList> {
     pub(crate) before_main: HL,
     #[serde(rename = "before-alternatives", default)]
     pub(crate) before_alternatives: HL,
-    #[serde(rename = "after-alternatives", default)]
-    pub(crate) after_alternatives: HL,
+    #[serde(rename = "after-complete", default)]
+    pub(crate) after_complete: HL,
 }
 
 #[derive(

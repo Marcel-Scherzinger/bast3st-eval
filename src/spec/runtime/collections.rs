@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     collections::{BTreeMap, VecDeque},
+    iter::Sum,
     sync::Arc,
 };
 
@@ -11,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     catchable::cerr,
-    spec::{MapKey, PrimitiveValue, RuntimeValue},
+    spec::{MapKey, Numeric, PrimitiveValue, RuntimeValue},
 };
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Default, From, Serialize, Deserialize)]
@@ -39,6 +40,12 @@ impl MappingOrArray {
         match self {
             Self::Array(a) => Either::Left(a.keys().map(Cow::Owned)),
             Self::Mapping(m) => Either::Right(m.keys().map(Cow::Borrowed)),
+        }
+    }
+    pub fn sum(&self) -> Numeric {
+        match self {
+            Self::Array(a) => a.sum(),
+            Self::Mapping(m) => m.values().sum(),
         }
     }
     pub fn value_array(&self) -> Array {
@@ -146,11 +153,13 @@ impl RealMapping {
     }
 
     pub fn with_merged(&self, other: &BTreeMap<MapKey, RuntimeValue>) -> Self {
-        self.with_new_keys(
+        let merged = self.with_new_keys(
             other
                 .iter()
                 .map(|(key, val)| (vec![key.clone()].into(), val.clone())),
-        )
+        );
+        log::trace!("merge of {self:?} with {other:?} resulted in {merged:?}");
+        merged
     }
 
     pub fn with_new_keys<K: Into<MapKey>, V: Into<RuntimeValue>>(
@@ -164,6 +173,7 @@ impl RealMapping {
             let value = value.into();
             extendable.insert_path(keys.into_iter().map(|k| k.into()).collect(), value.into());
         }
+
         let extendable = if let RuntimeValue::Comp(MappingOrArray::Mapping(m)) = extendable.into() {
             m
         } else {
@@ -202,6 +212,15 @@ impl From<DeepExtendable> for RuntimeValue {
     }
 }
 
+impl FromIterator<(MapKey, RuntimeValue)> for RealMapping {
+    fn from_iter<T: IntoIterator<Item = (MapKey, RuntimeValue)>>(iter: T) -> Self {
+        Self {
+            mapping: BTreeMap::from_iter(iter).into(),
+            default: None,
+        }
+    }
+}
+
 // TODO: vulnerable to stack overflow
 impl From<BTreeMap<MapKey, RuntimeValue>> for DeepExtendable {
     fn from(value: BTreeMap<MapKey, RuntimeValue>) -> Self {
@@ -222,7 +241,7 @@ impl From<BTreeMap<MapKey, RuntimeValue>> for DeepExtendable {
     }
 }
 
-#[derive(Debug, From)]
+#[derive(Debug, From, Clone)]
 enum DeepExtendable {
     Inner(BTreeMap<MapKey, DeepExtendable>),
     Leaf(PrimitiveValue),
@@ -296,6 +315,9 @@ impl Array {
     pub fn len(&self) -> usize {
         self.0.len()
     }
+    pub fn sum(&self) -> Numeric {
+        self.iter().sum()
+    }
 
     pub fn get(&self, mut key: i64) -> Result<&RuntimeValue, cerr> {
         let len: Result<i64, _> = self.len().try_into();
@@ -315,6 +337,28 @@ impl Array {
     }
     pub fn iter(&self) -> impl Iterator<Item = &RuntimeValue> {
         self.0.iter()
+    }
+}
+
+impl<'a> Sum<&'a RuntimeValue> for Numeric {
+    fn sum<I: Iterator<Item = &'a RuntimeValue>>(iter: I) -> Self {
+        let mut out = Numeric::Int(0);
+        for v in iter {
+            match v {
+                RuntimeValue::Prim(PrimitiveValue::Number(v)) => {
+                    out = out.q_add_numbers(v, &mut ())
+                }
+                RuntimeValue::Prim(PrimitiveValue::Str(t)) => {
+                    if let Ok(t) = t.parse() {
+                        out = out.q_add_numbers(&Numeric::Int(t), &mut ())
+                    } else if let Ok(t) = t.parse() {
+                        out = out.q_add_numbers(&Numeric::Float(t), &mut ())
+                    }
+                }
+                RuntimeValue::Comp(_) => (),
+            }
+        }
+        out
     }
 }
 

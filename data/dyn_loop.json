@@ -1,0 +1,140 @@
+{
+  "title": "Ausgabe des Doppelten der Summe der Quadrate von der ersten bis zur zweiten Engabe",
+  "categories": [
+    {
+      "title": "1 bis 5, 6 bis 10",
+      "tests": [
+        {
+          "title": "1 bis 5",
+          "criterion": 7,
+          "input": [
+            1,
+            5
+          ]
+        },
+        {
+          "title": "6 bis 10",
+          "criterion": 10,
+          "input": [
+            6,
+            10
+          ],
+          "hooks": {
+            "after-complete": [
+              [
+                13,
+                15
+              ]
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "hooks": {
+    "before-all-categories": [
+      [
+        17,
+        18
+      ]
+    ]
+  },
+  "nodes": {
+    "1": {
+      "op": "lit",
+      "v": 110
+    },
+    "2": {
+      "op": "concat",
+      "a": [
+        "Die korrekte Summe ist ",
+        1
+      ]
+    },
+    "3": {
+      "op": "read-output"
+    },
+    "4": {
+      "op": "view",
+      "p": "values",
+      "m": 3
+    },
+    "5": {
+      "op": "lit",
+      "v": -1
+    },
+    "6": {
+      "op": "mapitem",
+      "m": 4,
+      "k": [
+        5
+      ]
+    },
+    "7": {
+      "op": "contain-onlynum",
+      "fexp": 2,
+      "sub": 1,
+      "sup": 6
+    },
+    "8": {
+      "op": "lit",
+      "v": 660
+    },
+    "9": {
+      "op": "concat",
+      "a": [
+        "Die korrekte Summe ist ",
+        8
+      ]
+    },
+    "10": {
+      "op": "contain-onlynum",
+      "fexp": 9,
+      "sub": 8,
+      "sup": 6
+    },
+    "11": {
+      "op": "length",
+      "v": 3
+    },
+    "12": {
+      "op": "lit",
+      "v": 0
+    },
+    "13": {
+      "op": ">=",
+      "l": 11,
+      "r": 12
+    },
+    "14": {
+      "op": "cmapitem",
+      "m": "param",
+      "k": [
+        "doc",
+        "blockcount",
+        "total"
+      ]
+    },
+    "15": {
+      "op": "set-flag",
+      "k": [
+        "params"
+      ],
+      "v": 14
+    },
+    "16": {
+      "op": "lit",
+      "v": 30
+    },
+    "17": {
+      "op": ">",
+      "l": 14,
+      "r": 16
+    },
+    "18": {
+      "op": "send-msg",
+      "t": "Sie verwenden zu viele Bl\u00f6cke",
+      "s": "error"
+    }
+  }
+}

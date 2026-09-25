@@ -1,12 +1,14 @@
+use itertools::Itertools;
+use scratch_test_model::ProjectDoc;
 use tokio::task::JoinError;
 
 use crate::{
     Features, Messages,
     evaluation::{
-        Context, Effects, FatalRunError, PCategory, PSpec, SelectableSource, WithEffects,
-        single_evaluation::EvalSignal,
+        Context, Effects, FatalRunError, PCategory, PSpec, ParamData, SelectableSource,
+        WithEffects, single_evaluation::EvalSignal,
     },
-    spec::{Bast3StSpec, SpecHooks},
+    spec::{Bast3StSpec, MapKey, Numeric, PrimitiveValue, RealMapping, RuntimeValue, SpecHooks},
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -17,8 +19,54 @@ pub enum SpecRunError {
     FatalRun(#[from] FatalRunError),
 }
 
+fn get_blockcount_map(doc: &ProjectDoc) -> (RealMapping, (RuntimeValue, RealMapping)) {
+    let base_counts = doc.ids_with_opcodes().map(|(_, unit)| unit).counts();
+    let total = RuntimeValue::from(Numeric::Int(
+        base_counts
+            .values()
+            .sum::<usize>()
+            .try_into()
+            .unwrap_or(i64::MAX),
+    ));
+    let by_opcode: RealMapping = base_counts
+        .iter()
+        .map(|(key, count)| {
+            (
+                MapKey::Str(key.to_string().into()),
+                RuntimeValue::Prim(PrimitiveValue::Number(Numeric::Int(
+                    (*count).try_into().unwrap_or(i64::MAX),
+                ))),
+            )
+        })
+        .collect();
+
+    let blockcount = RealMapping::from_iter(vec![
+        ("total".into(), total.clone()),
+        ("opcode".into(), RuntimeValue::from(by_opcode.clone())),
+    ]);
+    (blockcount, (total, by_opcode))
+}
+
 impl PSpec {
-    async fn new_with_effects<Fallback: SelectableSource + Clone + 'static>(
+    pub async fn new<Fallback: SelectableSource + Clone + 'static>(
+        ctx: &Context,
+        spec: &Bast3StSpec,
+        param_my: impl Into<RealMapping>,
+        fallback: Fallback,
+    ) -> Result<WithEffects<PSpec>, SpecRunError> {
+        let (blockcount, _) = get_blockcount_map(ctx.doc());
+        let doc = RealMapping::from_iter(vec![("blockcount".into(), blockcount.into())]);
+        let param_my = param_my.into();
+        let all = RealMapping::from_iter(vec![
+            ("doc".into(), doc.into()),
+            ("my".into(), param_my.clone().into()),
+        ]);
+
+        let stats = ParamData::from(all);
+        Self::new_with_effects(ctx, spec, (stats, fallback)).await
+    }
+
+    pub async fn new_with_effects<Fallback: SelectableSource + Clone + 'static>(
         ctx: &Context,
         spec: &Bast3StSpec,
         fallback: Fallback,

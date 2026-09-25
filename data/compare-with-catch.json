@@ -12,7 +12,7 @@
             -5
           ],
           "hooks": {
-            "before-alternatives": [
+            "after-complete": [
               [
                 6,
                 13
@@ -28,7 +28,7 @@
             -10
           ],
           "hooks": {
-            "before-alternatives": [
+            "after-complete": [
               [
                 6,
                 13
@@ -44,7 +44,7 @@
             10
           ],
           "hooks": {
-            "before-alternatives": [
+            "after-complete": [
               [
                 6,
                 13
@@ -60,7 +60,7 @@
             5
           ],
           "hooks": {
-            "before-alternatives": [
+            "after-complete": [
               [
                 6,
                 13
@@ -12899,7 +12899,7 @@
     "9": {
       "op": "catch",
       "c": 6,
-      "error": "network_statusDisallowed|network_respInvalid_notJson|network_policy_serverNotAllowed|network_external",
+      "error": "network_statusDisallowed|network_respInvalid_notJson|network_policy_serverNotAllowed|network_external|network_url_syntax",
       "fallback": 8
     },
     "10": {

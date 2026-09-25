@@ -148,10 +148,14 @@ impl<'a> From<&'a str> for MapKey {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone, From, Eq, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    derive_more::Debug, PartialEq, PartialOrd, Clone, From, Eq, Ord, Hash, Serialize, Deserialize,
+)]
 #[serde(untagged)]
 pub enum MapKey {
+    #[debug("{_0:?}")]
     Str(Text),
+    #[debug("{_0:?}")]
     Int(i64),
     // Bool(bool),
 }

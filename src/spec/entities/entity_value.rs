@@ -223,6 +223,7 @@ impl ValueEntity {
                         val(mapping.keys().map(|x| x.to_prim()).collect::<Array>())
                     }
                     (mapping, "values") => val(mapping.value_array()),
+                    (mapping, "sum") => val(mapping.sum()),
                     (_, _) => FatalError::UnknownViewPerspective(perspective.into()).into(),
                 }
             }),
