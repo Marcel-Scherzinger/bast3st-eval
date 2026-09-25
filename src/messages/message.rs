@@ -25,4 +25,10 @@ impl<L> Message<L> {
             _phantom: Default::default(),
         }
     }
+    pub fn severity(&self) -> MessageSeverity {
+        self.severity
+    }
+    pub fn text(&self) -> &Text {
+        &self.text
+    }
 }

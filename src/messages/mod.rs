@@ -1,4 +1,3 @@
-// TODO
 mod hub;
 mod message;
 mod traits;

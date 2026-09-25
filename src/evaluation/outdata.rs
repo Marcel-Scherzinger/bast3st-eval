@@ -1,3 +1,4 @@
+use derive_getters::Getters;
 use derive_more::From;
 
 use crate::{
@@ -11,17 +12,20 @@ use crate::{
     },
 };
 
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
 pub struct PSpec {
     pub(crate) messages: Messages<Bast3StSpec>,
     pub(crate) categories: Vec<PCategory>,
     pub(crate) hooks: SpecHooks<FallibleHookResults>,
 }
 
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
 pub struct PCategory {
     pub(crate) messages: Messages<Category>,
     pub(crate) tests: Vec<PMainTest>,
     pub(crate) hooks: CategoryHooks<FallibleHookResults>,
 }
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
 pub struct PMainTest {
     pub(crate) messages: Messages<MainTest>,
     pub(crate) general: PGeneralTest<MainTestHooks<FallibleHookResults>>,
@@ -36,11 +40,13 @@ impl PMainTest {
     }
 }
 
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
 pub struct PAlternativeTest {
     pub(crate) messages: Messages<AlternativeTest>,
     pub(crate) general: PGeneralTest<AlternativeTestHooks<FallibleHookResults>>,
 }
 
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
 pub struct PGeneralTest<Hooks> {
     pub(crate) status: ProcessedTestStatus,
     pub(crate) hooks: Hooks,
