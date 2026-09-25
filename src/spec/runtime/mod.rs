@@ -13,6 +13,7 @@ pub(super) use marker::{CheapBorrowFromAny, ClarifiedCerrMerging, PossibleRuntim
 pub(crate) use marker::{MachineReturnVal, SpecializeFrom};
 pub use network::{InnerNetworkRequest, NetworkRequest, NetworkResponse};
 pub use selector::Selector;
+use serde::{Deserialize, Serialize};
 pub use tasks::{CompiledRegex, SpecificTaskRequest};
 
 use crate::spec::Numeric;
@@ -59,7 +60,8 @@ impl<T> MaybeEval<T> {
     }
 }
 
-#[derive(derive_more::Debug, Clone, PartialEq, PartialOrd)]
+#[derive(derive_more::Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum RuntimeValue {
     #[debug("Prim({_0:?})")]
     Prim(PrimitiveValue),

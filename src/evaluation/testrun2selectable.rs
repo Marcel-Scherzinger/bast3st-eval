@@ -107,6 +107,7 @@ pub(crate) async fn run_actual_test<Hooks, Source: SelectableSource>(
         criterion.cast_id(),
         &(&testdata, &fallback),
         features,
+        settings.allowed_network().clone(),
     ) {
         Ok(eval) => {
             let eval = eval.run_to_end_with_early_return().await;

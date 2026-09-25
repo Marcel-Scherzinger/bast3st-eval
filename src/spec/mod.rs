@@ -5,7 +5,7 @@ mod random_generation;
 mod runtime;
 mod structure;
 
-use std::{cmp::Ordering, sync::Arc};
+use std::{cmp::Ordering, fmt::Debug, sync::Arc};
 
 use derive_more::{Deref, From, Into};
 use scratch_test_value::{SNumber, SValue};
@@ -109,6 +109,12 @@ pub type Numeric = scratch_test_value::SNumber;
 #[debug("{_0:?}")]
 pub struct Text(Arc<str>);
 
+impl Text {
+    pub fn from_debug(x: impl Debug) -> Text {
+        Text(format!("{x:?}").into())
+    }
+}
+
 impl From<String> for Text {
     fn from(value: String) -> Self {
         Self(value.into())
@@ -142,7 +148,8 @@ impl<'a> From<&'a str> for MapKey {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone, From, Eq, Ord, Hash)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, From, Eq, Ord, Hash, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum MapKey {
     Str(Text),
     Int(i64),

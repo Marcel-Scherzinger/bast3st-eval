@@ -8,13 +8,14 @@ use crate::{
     Features, Messages,
     evaluation::{FlagData, SelectableSource},
     messages::{AnyMessages, MsgType},
-    spec::{FatalError, RuntimeAction, RuntimeAny, SendMsgAction},
+    spec::{FatalError, NoticeAction, RuntimeAction, RuntimeAny, SendMsgAction},
 };
 
 #[derive(Debug, Default, Getters, PartialEq, PartialOrd, Clone)]
 pub struct Effects {
     flags: FlagData,
     messages: AnyMessages,
+    notice: Vec<NoticeAction>,
 }
 
 impl Effects {
@@ -22,6 +23,7 @@ impl Effects {
         self.messages.extend(other.messages);
         let flags = std::mem::take(&mut self.flags);
         self.flags = flags.with_append(other.flags);
+        self.notice.extend(other.notice);
     }
     pub fn take_messages<L: MsgType>(&mut self) -> Messages<L> {
         self.messages.drain_msg_of()
@@ -40,15 +42,19 @@ impl SelectableSource for Effects {
 
 impl Extend<RuntimeAction> for Effects {
     fn extend<T: IntoIterator<Item = RuntimeAction>>(&mut self, iter: T) {
-        let (other, messages): (Vec<RuntimeAction>, Vec<SendMsgAction>) = iter
+        let (other, messages): (Vec<Either<_, _>>, Vec<SendMsgAction>) = iter
             .into_iter()
             .flat_map(|item| match item {
                 RuntimeAction::SendMsg(send) => Some(Either::Right(send)),
                 RuntimeAction::EndThisTest(_) => None,
-                act @ RuntimeAction::SetFlag { .. } => Some(Either::Left(act)),
+                act @ RuntimeAction::SetFlag { .. } => Some(Either::Left(Either::Left(act))),
+                RuntimeAction::Notice(notice) => Some(Either::Left(Either::Right(notice))),
             })
             .partition_map(|x| x);
+        let (other, notice): (Vec<RuntimeAction>, Vec<NoticeAction>) =
+            other.into_iter().partition_map(|x| x);
         self.flags.extend(&other);
         self.messages.extend(messages);
+        self.notice.extend(notice);
     }
 }

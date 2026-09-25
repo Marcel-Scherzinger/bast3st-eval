@@ -78,6 +78,7 @@ async fn execute_hook<Source: SelectableSource>(
         crit.cast_id(),
         &outer_fallback,
         features,
+        settings.allowed_network().clone(),
     )
     .map_err(SingleEvaluationError::from)
     .map_err(HookFailure::Criterion)?;
@@ -96,6 +97,7 @@ async fn execute_hook<Source: SelectableSource>(
                     act.cast_id(),
                     &outer_fallback,
                     features,
+                    settings.allowed_network().clone(),
                 )
                 .map_err(SingleEvaluationError::from)
                 .map_err(HookFailure::Action)?;

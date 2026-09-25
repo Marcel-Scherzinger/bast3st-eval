@@ -1,8 +1,10 @@
 use std::{collections::BTreeMap, sync::Arc};
 
+use derive_getters::Getters;
+
 use crate::spec::{RealMapping, Text, runtime::RuntimeValue};
 
-#[derive(Debug, PartialEq, PartialOrd, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
 pub struct NetworkRequest {
     server: Text,
     route: Text,
@@ -24,6 +26,9 @@ impl NetworkRequest {
                 json: json.map(|x| x.into()),
             },
         }
+    }
+    pub fn into_specific(self) -> InnerNetworkRequest {
+        self.specific
     }
 }
 
@@ -47,6 +52,12 @@ impl NetworkResponse {
 
     pub fn status(&self) -> u16 {
         self.status
+    }
+}
+
+impl From<reqwest::Response> for NetworkResponse {
+    fn from(value: reqwest::Response) -> Self {
+        todo!()
     }
 }
 

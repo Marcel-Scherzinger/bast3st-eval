@@ -13,7 +13,9 @@ pub use context::Context;
 pub use features::{Features, RequiredFeatures};
 pub use outdata::*;
 pub use selectable::*;
-pub use single_evaluation::{EntryPointMissing, SingleEvaluation, SingleEvaluationError};
+pub use single_evaluation::{
+    AllowNetData, EntryPointMissing, SingleEvaluation, SingleEvaluationError,
+};
 
 pub use testrun2selectable::{
     ActualTestResult, ActualTestResultEval, FatalRunError, JustFailTestRunError,

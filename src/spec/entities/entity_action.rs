@@ -3,11 +3,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     Features,
+    catchable::cerr,
     evaluation::RequiredFeatures,
     spec::{
-        CriterionEntity, EndThisTestMode, EntityId, MachineConstruction, MapKey,
-        MessageSendingLevel, MessageSeverity, PrimitiveValue, SetFlagMode, Text, ValueReference,
-        machine::Machine, runtime::RuntimeCriterion,
+        CriterionEntity, EndThisTestMode, EntityId, InnerNetworkRequest, MachineConstruction,
+        MapKey, MessageSendingLevel, MessageSeverity, NetworkResponse, PrimitiveValue, SetFlagMode,
+        Text, ValueReference, machine::Machine, runtime::RuntimeCriterion,
     },
 };
 
@@ -132,7 +133,19 @@ pub enum RuntimeAction {
     SendMsg(SendMsgAction),
     EndThisTest(EndThisTestAction),
     SetFlag(SetFlagAction),
+    Notice(NoticeAction),
 }
+
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
+pub enum NoticeAction {
+    Network {
+        url: Result<reqwest::Url, (Text, Text)>,
+        request: InnerNetworkRequest,
+        // NetworkResponse or Debug of reqwest::Error
+        response: Result<Result<NetworkResponse, Text>, cerr>,
+    },
+}
+
 #[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
 pub struct SetFlagAction {
     mode: SetFlagMode,

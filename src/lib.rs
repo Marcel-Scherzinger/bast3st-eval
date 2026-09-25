@@ -8,7 +8,9 @@ pub use messages::Messages;
 
 #[cfg(test)]
 mod tests {
-    use std::borrow::Cow;
+    use std::{borrow::Cow, sync::Arc};
+
+    use reqwest::Url;
 
     use crate::{
         Features,
@@ -29,6 +31,15 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_urls() {
+        let url: Url = "https://example.org:80/abc".parse().unwrap();
+        let x = url.host_str().unwrap();
+        assert_eq!("example.org", x);
+        assert_eq!("https", url.scheme());
+        assert_eq!(Some(80), url.port_or_known_default());
+    }
+
     #[tokio::test]
     async fn t() {
         let _ = dotenvy::dotenv();
@@ -44,8 +55,14 @@ mod tests {
         let selectable = DummyData {
             data: RuntimeAny::from(output),
         };
-        let eval =
-            SingleEvaluation::new(entities, 13.into(), &selectable, Features::all()).unwrap();
+        let eval = SingleEvaluation::new(
+            entities,
+            13.into(),
+            &selectable,
+            Features::all(),
+            Arc::new(Ok),
+        )
+        .unwrap();
         let eval = eval.run_to_end_with_early_return().await;
         panic!(
             "{:?} {:#?}\n\n\n{entities:#?}",

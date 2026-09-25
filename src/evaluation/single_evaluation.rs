@@ -1,15 +1,17 @@
-use std::{borrow::Cow, collections::BTreeMap, fmt::Display};
+use std::{borrow::Cow, collections::BTreeMap, fmt::Display, sync::Arc};
 
 use derive_more::{Display, From};
 use either::Either;
+use reqwest::Url;
 
 use crate::{
     Features,
     catchable::cerr,
     evaluation::{RequiredFeatures, SelectableSource},
     spec::{
-        EndThisTestAction, Entity, EntityId, FatalError, Machine, MissingValue, NetworkRequest,
-        NetworkResponse, RuntimeAction, RuntimeAny, Selector, SpecializeFrom, UnfinishedMachine,
+        EndThisTestAction, Entity, EntityId, FatalError, InnerNetworkRequest, Machine,
+        MissingValue, NetworkRequest, NetworkResponse, NoticeAction, RuntimeAction, RuntimeAny,
+        Selector, SpecializeFrom, Text, UnfinishedMachine,
     },
 };
 
@@ -17,7 +19,11 @@ pub struct EvaluationRunning(());
 pub struct EvaluationFinished(());
 pub struct EvaluationFinishedOrCancelled(());
 
-#[derive(Debug)]
+pub type AllowNetData = (Url, InnerNetworkRequest);
+pub type AllowedNetClosure =
+    Arc<dyn Fn(AllowNetData) -> Result<AllowNetData, (AllowNetData, cerr)> + Send + Sync>;
+
+#[derive(derive_more::Debug)]
 pub struct SingleEvaluation<'e, 's, S, EvalStatus> {
     entities: &'e BTreeMap<EntityId, Entity>,
     selectable: &'s S,
@@ -29,6 +35,8 @@ pub struct SingleEvaluation<'e, 's, S, EvalStatus> {
     actions: Vec<RuntimeAction>,
     further_steps_and_no_early_termination: Result<bool, AnyEvalTermination>,
     used_features: Features,
+    #[debug("allowed_network: ...")]
+    allowed_network: AllowedNetClosure,
     _phantom: std::marker::PhantomData<EvalStatus>,
 }
 
@@ -121,6 +129,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
         entry_point: EntityId,
         selectable_data: &'s S,
         allowed_features: Features,
+        allowed_network: AllowedNetClosure,
     ) -> Result<Self, EntryPointMissing> {
         if entities.contains_key(&entry_point) {
             Ok(Self {
@@ -134,6 +143,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
                 actions: Default::default(),
                 used_features: Features::empty(),
                 allowed_features,
+                allowed_network,
                 _phantom: Default::default(),
             })
         } else {
@@ -183,6 +193,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
             actions: self.actions,
             further_steps_and_no_early_termination: self.further_steps_and_no_early_termination,
             used_features: self.used_features,
+            allowed_network: self.allowed_network,
             _phantom: Default::default(),
         }
     }
@@ -202,6 +213,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
             actions: self.actions,
             further_steps_and_no_early_termination: self.further_steps_and_no_early_termination,
             used_features: self.used_features,
+            allowed_network: self.allowed_network,
             _phantom: Default::default(),
         }
     }
@@ -217,7 +229,68 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
         &mut self,
         task: NetworkRequest,
     ) -> Result<Result<NetworkResponse, cerr>, FatalError> {
-        todo!()
+        let url: Result<reqwest::Url, _> = format!(
+            "{}/{}",
+            task.server().trim_end_matches('/'),
+            task.route().trim_start_matches('/')
+        )
+        .parse();
+
+        let url = match url {
+            Ok(url) => url,
+            Err(_) => {
+                self.actions
+                    .push(RuntimeAction::Notice(NoticeAction::Network {
+                        url: Err((task.server().clone(), task.route().clone())),
+                        request: task.into_specific(),
+                        response: Err(cerr::network_url_syntax),
+                    }));
+                return Ok(Err(cerr::network_url_syntax));
+            }
+        };
+        let specific = task.into_specific();
+
+        let decision = (self.allowed_network)((url, specific));
+        let (info, response) = match decision {
+            Err((info, err)) => (info, Err(err)),
+            Ok((url, specific)) => match &specific {
+                InnerNetworkRequest::Get => {
+                    let r = reqwest::get(url.clone())
+                        .await
+                        .map_err(Text::from_debug)
+                        .map(NetworkResponse::from);
+                    ((url, specific), Ok(r))
+                }
+                InnerNetworkRequest::Post { json } => match reqwest::Client::builder().build() {
+                    Err(err) => ((url, specific), Ok(Err(Text::from_debug(err)))),
+                    Ok(client) => {
+                        let json: BTreeMap<_, _> = json
+                            .as_ref()
+                            .map(|x| BTreeMap::from_iter(x.iter().cloned()))
+                            .unwrap_or_default();
+                        let r = client
+                            .post(url.clone())
+                            .json(&json)
+                            .send()
+                            .await
+                            .map_err(Text::from_debug)
+                            .map(NetworkResponse::from);
+                        ((url, specific), Ok(r))
+                    }
+                },
+            },
+        };
+        let return_value = response
+            .clone()
+            .and_then(|res| res.map_err(|_| cerr::network_external));
+
+        self.actions
+            .push(RuntimeAction::Notice(NoticeAction::Network {
+                url: Ok(info.0),
+                request: info.1,
+                response,
+            }));
+        Ok(return_value)
     }
 
     async fn _run_step(&mut self) -> Result<bool, AnyEvalTermination> {

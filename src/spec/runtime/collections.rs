@@ -7,16 +7,18 @@ use std::{
 use derive_more::From;
 use either::Either;
 use scratch_test_value::{SList, SNumber};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     catchable::cerr,
     spec::{MapKey, PrimitiveValue, RuntimeValue},
 };
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Default, From)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Default, From, Serialize, Deserialize)]
 pub struct Array(Arc<[RuntimeValue]>);
 
-#[derive(derive_more::Debug, Clone, PartialEq, PartialOrd, From)]
+#[derive(derive_more::Debug, Clone, PartialEq, PartialOrd, From, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum MappingOrArray {
     #[debug("{_0:?}")]
     Array(Array),
@@ -60,12 +62,32 @@ impl MappingOrArray {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Default, From)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Default, From, Serialize, Deserialize)]
+#[serde(
+    from = "Arc<BTreeMap<MapKey, RuntimeValue>>",
+    into = "Arc<BTreeMap<MapKey, RuntimeValue>>"
+)]
 pub struct RealMapping {
     #[from]
     mapping: Arc<BTreeMap<MapKey, RuntimeValue>>,
     #[from(skip)]
+    #[serde(skip)]
     default: Option<Box<RuntimeValue>>,
+}
+
+impl From<Arc<BTreeMap<MapKey, RuntimeValue>>> for RealMapping {
+    fn from(value: Arc<BTreeMap<MapKey, RuntimeValue>>) -> Self {
+        Self {
+            mapping: value,
+            default: None,
+        }
+    }
+}
+
+impl From<RealMapping> for Arc<BTreeMap<MapKey, RuntimeValue>> {
+    fn from(value: RealMapping) -> Self {
+        value.mapping
+    }
 }
 
 impl AsRef<BTreeMap<MapKey, RuntimeValue>> for RealMapping {
