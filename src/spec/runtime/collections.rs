@@ -110,6 +110,12 @@ impl RealMapping {
     ) -> Self {
         Self { mapping, default }
     }
+    pub fn with_default(&self, default: Option<RuntimeValue>) -> Self {
+        Self {
+            mapping: self.mapping.clone(),
+            default: default.map(Box::from),
+        }
+    }
     pub fn keys(&self) -> std::collections::btree_map::Keys<'_, MapKey, RuntimeValue> {
         self.mapping.keys()
     }

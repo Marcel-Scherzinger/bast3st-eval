@@ -40,7 +40,8 @@ fn get_blockcount_map(doc: &ProjectDoc) -> (RealMapping, (RuntimeValue, RealMapp
                 ))),
             )
         })
-        .collect();
+        .collect::<RealMapping>()
+        .with_default(Some(0.into()));
 
     let blockcount = RealMapping::from_iter(vec![
         ("total".into(), total.clone()),

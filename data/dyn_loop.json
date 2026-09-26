@@ -31,7 +31,11 @@
               ],
               [
                 11,
-                17
+                16
+              ],
+              [
+                11,
+                19
               ]
             ]
           }
@@ -42,8 +46,8 @@
   "hooks": {
     "before-all-categories": [
       [
-        19,
-        20
+        21,
+        22
       ]
     ]
   },
@@ -132,33 +136,51 @@
     },
     "15": {
       "op": "cmapitem",
+      "m": "param",
+      "k": [
+        "doc",
+        "blockcount",
+        "opcode",
+        "event_whenflagclicked"
+      ]
+    },
+    "16": {
+      "op": "set-flag",
+      "k": [
+        "params",
+        "3"
+      ],
+      "v": 15
+    },
+    "17": {
+      "op": "cmapitem",
       "m": "flags",
       "k": [
         "params"
       ]
     },
-    "16": {
+    "18": {
       "op": "property",
       "p": "sum",
-      "v": 15
+      "v": 17
     },
-    "17": {
+    "19": {
       "op": "set-flag",
       "k": [
-        "params"
+        "params1"
       ],
-      "v": 16
+      "v": 18
     },
-    "18": {
+    "20": {
       "op": "lit",
       "v": 30
     },
-    "19": {
+    "21": {
       "op": ">",
       "l": 12,
-      "r": 18
+      "r": 20
     },
-    "20": {
+    "22": {
       "op": "send-msg",
       "t": "Sie verwenden zu viele Bl\u00f6cke",
       "s": "error"
