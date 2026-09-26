@@ -1,9 +1,11 @@
+use std::fmt::Debug;
+
 use itertools::Itertools;
 use scratch_test_model::ProjectDoc;
 use tokio::task::JoinError;
 
 use crate::{
-    Features, Messages,
+    Features, LogPfx, Messages,
     evaluation::{
         Context, Effects, FatalRunError, PCategory, PSpec, ParamData, SelectableSource,
         WithEffects, single_evaluation::EvalSignal,
@@ -50,10 +52,12 @@ fn get_blockcount_map(doc: &ProjectDoc) -> (RealMapping, (RuntimeValue, RealMapp
 impl PSpec {
     pub async fn new<Fallback: SelectableSource + Clone + 'static>(
         ctx: &Context,
+        log_pfx: impl Into<LogPfx>,
         spec: &Bast3StSpec,
         param_my: impl Into<RealMapping>,
         fallback: Fallback,
     ) -> Result<WithEffects<PSpec>, SpecRunError> {
+        let log_pfx = log_pfx.into();
         let (blockcount, _) = get_blockcount_map(ctx.doc());
         let doc = RealMapping::from_iter(vec![("blockcount".into(), blockcount.into())]);
         let param_my = param_my.into();
@@ -63,11 +67,12 @@ impl PSpec {
         ]);
 
         let stats = ParamData::from(all);
-        Self::new_with_effects(ctx, spec, (stats, fallback)).await
+        Self::new_with_effects(ctx, log_pfx, spec, (stats, fallback)).await
     }
 
     pub async fn new_with_effects<Fallback: SelectableSource + Clone + 'static>(
         ctx: &Context,
+        log_pfx: LogPfx,
         spec: &Bast3StSpec,
         fallback: Fallback,
     ) -> Result<WithEffects<PSpec>, SpecRunError> {
@@ -77,7 +82,13 @@ impl PSpec {
         let (before_all_categories, sig) = spec
             .hooks()
             .before_all_categories()
-            .run_all(ctx, &mut eft, Features::PermittedFEAT_SpecHook, &fallback)
+            .run_all(
+                ctx,
+                log_pfx.join("before-all-cat"),
+                &mut eft,
+                Features::PermittedFEAT_SpecHook,
+                &fallback,
+            )
             .await;
         match sig {
             Some(EvalSignal::EndTest(_)) | None => {} // not relevant
@@ -89,12 +100,14 @@ impl PSpec {
             let mut cat_futures = vec![];
             {
                 let frozen_effects = std::sync::Arc::new(eft.clone());
-                for cat in spec.categories() {
+                let log_pfx = log_pfx.join("cat");
+                for (index, cat) in spec.categories().iter().enumerate() {
                     let cat = cat.clone();
                     let source = (frozen_effects.clone(), fallback.clone());
                     let ctx = ctx.clone();
+                    let log_pfx = log_pfx.join(index);
                     cat_futures.push(tokio::spawn(async move {
-                        PCategory::new(&ctx, &cat, source).await
+                        PCategory::new(&ctx, log_pfx, &cat, source).await
                     }));
                 }
             }
@@ -108,7 +121,13 @@ impl PSpec {
         let (after_all_categories, sig) = spec
             .hooks()
             .after_all_categories()
-            .run_all(ctx, &mut eft, Features::PermittedFEAT_SpecHook, fallback)
+            .run_all(
+                ctx,
+                log_pfx.join("after-all-cat"),
+                &mut eft,
+                Features::PermittedFEAT_SpecHook,
+                fallback,
+            )
             .await;
         match sig {
             Some(EvalSignal::EndTest(_)) | None => {} // not relevant

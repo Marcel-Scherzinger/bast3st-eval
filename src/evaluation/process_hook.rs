@@ -1,7 +1,7 @@
 use either::Either;
 
 use crate::{
-    Features,
+    Features, LogPfx,
     evaluation::{
         Context, Effects, SelectableSource, SingleEvaluation, SingleEvaluationError,
         single_evaluation::EvalSignal,
@@ -33,13 +33,14 @@ impl HookList {
     pub(crate) async fn run_all<Source: SelectableSource>(
         &self,
         ctx: &Context,
+        log_pfx: LogPfx,
         eft: &mut Effects,
         feat: Features,
         fallback: Source,
     ) -> (FallibleHookResults, Option<EvalSignal>) {
         let mut tried = vec![];
-        for (crit, act) in self.iter() {
-            match execute_hook(ctx, (&eft, &fallback), feat, crit, act).await {
+        for (index, (crit, act)) in self.iter().enumerate() {
+            match execute_hook(ctx, log_pfx.join(index), (&eft, &fallback), feat, crit, act).await {
                 Err(failure) => tried.push(Err(failure)),
                 Ok((actions, criterion, signal)) => {
                     tried.push(Ok(HookResult { criterion }));
@@ -59,6 +60,7 @@ impl HookList {
 
 async fn execute_hook<Source: SelectableSource>(
     settings: &Context,
+    log_pfx: LogPfx,
     outer_fallback: Source,
     features: Features,
     crit: EntityId<CriterionEntity>,
@@ -74,6 +76,7 @@ async fn execute_hook<Source: SelectableSource>(
     let mut actions = vec![];
 
     let crit_eval = SingleEvaluation::new(
+        log_pfx.join("crit"),
         settings.entities(),
         crit.cast_id(),
         &outer_fallback,
@@ -93,6 +96,7 @@ async fn execute_hook<Source: SelectableSource>(
         Either::Right(criterion) => {
             if criterion.is_fulfilled() {
                 let act_eval = SingleEvaluation::new(
+                    log_pfx.join("act"),
                     settings.entities(),
                     act.cast_id(),
                     &outer_fallback,

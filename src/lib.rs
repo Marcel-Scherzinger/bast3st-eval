@@ -1,9 +1,11 @@
 pub mod catchable;
 pub mod evaluation;
+mod log_pfx;
 pub mod messages;
 pub mod spec;
 
 pub use evaluation::Features;
+pub use log_pfx::LogPfx;
 pub use messages::Messages;
 
 #[cfg(test)]
@@ -61,6 +63,7 @@ mod tests {
             data: RuntimeAny::from(output),
         };
         let eval = SingleEvaluation::new(
+            "eval".into(),
             entities,
             13.into(),
             &selectable,
@@ -120,7 +123,7 @@ mod tests {
             allowed_network: Arc::new(Ok),
         };
 
-        let data = PSpec::new(&ctx, &spec, RealMapping::default(), fallback).await;
+        let data = PSpec::new(&ctx, "test-a1", &spec, RealMapping::default(), fallback).await;
 
         panic!("{data:#?}");
     }

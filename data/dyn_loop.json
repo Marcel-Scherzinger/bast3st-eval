@@ -22,8 +22,16 @@
           "hooks": {
             "after-complete": [
               [
-                13,
-                15
+                11,
+                13
+              ],
+              [
+                11,
+                14
+              ],
+              [
+                11,
+                17
               ]
             ]
           }
@@ -34,8 +42,8 @@
   "hooks": {
     "before-all-categories": [
       [
-        17,
-        18
+        19,
+        20
       ]
     ]
   },
@@ -94,20 +102,10 @@
       "sup": 6
     },
     "11": {
-      "op": "property",
-      "p": "length",
-      "v": 3
+      "op": "special-crit",
+      "v": "fulfilled"
     },
     "12": {
-      "op": "lit",
-      "v": 0
-    },
-    "13": {
-      "op": ">=",
-      "l": 11,
-      "r": 12
-    },
-    "14": {
       "op": "cmapitem",
       "m": "param",
       "k": [
@@ -116,23 +114,51 @@
         "total"
       ]
     },
+    "13": {
+      "op": "set-flag",
+      "k": [
+        "params",
+        "1"
+      ],
+      "v": 12
+    },
+    "14": {
+      "op": "set-flag",
+      "k": [
+        "params",
+        "2"
+      ],
+      "v": "123"
+    },
     "15": {
+      "op": "cmapitem",
+      "m": "flags",
+      "k": [
+        "params"
+      ]
+    },
+    "16": {
+      "op": "property",
+      "p": "sum",
+      "v": 15
+    },
+    "17": {
       "op": "set-flag",
       "k": [
         "params"
       ],
-      "v": 14
+      "v": 16
     },
-    "16": {
+    "18": {
       "op": "lit",
       "v": 30
     },
-    "17": {
+    "19": {
       "op": ">",
-      "l": 14,
-      "r": 16
+      "l": 12,
+      "r": 18
     },
-    "18": {
+    "20": {
       "op": "send-msg",
       "t": "Sie verwenden zu viele Bl\u00f6cke",
       "s": "error"

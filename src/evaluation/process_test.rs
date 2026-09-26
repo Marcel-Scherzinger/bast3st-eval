@@ -1,7 +1,7 @@
 use either::Either;
 
 use crate::{
-    Features,
+    Features, LogPfx,
     evaluation::{
         Context, Effects, PAlternativeTest, PGeneralTest, PMainTest, ProcessedTestStatus,
         SelectableSource, WithEffects,
@@ -66,15 +66,17 @@ fn process_test_status(
 impl PMainTest {
     pub async fn new<Fallback: SelectableSource>(
         ctx: &Context,
+        log_pfx: LogPfx,
         test: &MainTest,
         fallback: Fallback,
     ) -> Result<WithEffects<PMainTest>, MainTestFailure> {
-        process_main_test(ctx, test, fallback).await
+        process_main_test(ctx, log_pfx, test, fallback).await
     }
 }
 
 async fn process_main_test<Fallback: SelectableSource>(
     ctx: &Context,
+    log_pfx: LogPfx,
     test: &MainTest,
     fallback: Fallback,
 ) -> Result<WithEffects<PMainTest>, MainTestFailure> {
@@ -89,6 +91,7 @@ async fn process_main_test<Fallback: SelectableSource>(
         .before_main()
         .run_all(
             ctx,
+            log_pfx.join("before-main"),
             &mut eft,
             Features::PermittedFEAT_PreTestHook,
             &fallback,
@@ -105,6 +108,7 @@ async fn process_main_test<Fallback: SelectableSource>(
     } else {
         let main_result = run_actual_test(
             ctx,
+            log_pfx.join("main"),
             test.as_ref(),
             (&eft, &fallback),
             Features::PermittedFEAT_PassTestCrit,
@@ -126,6 +130,7 @@ async fn process_main_test<Fallback: SelectableSource>(
             .before_alternatives()
             .run_all(
                 ctx,
+                log_pfx.join("before-alternatives"),
                 &mut eft,
                 Features::PermittedFEAT_PostTestHook,
                 (&main_rundata, &fallback),
@@ -135,8 +140,14 @@ async fn process_main_test<Fallback: SelectableSource>(
         // ### Actual alternatives if hooks send no signal
         // ###############################################
         if main_status.maybe_overwrite_with_signal(sig).proceedable() {
-            try_alternative_tests_of_main(ctx, &mut eft, test.alternative_tests(), &fallback)
-                .await?
+            try_alternative_tests_of_main(
+                ctx,
+                log_pfx.join("alt"),
+                &mut eft,
+                test.alternative_tests(),
+                &fallback,
+            )
+            .await?
         } else {
             vec![]
         }
@@ -145,7 +156,7 @@ async fn process_main_test<Fallback: SelectableSource>(
     };
 
     // #########################################
-    // ### Hooks: after_alternatives
+    // ### Hooks: after_complete
     // #########################################
     let mut after_complete = Default::default();
     if main_status.proceedable() {
@@ -154,6 +165,7 @@ async fn process_main_test<Fallback: SelectableSource>(
             .after_complete()
             .run_all(
                 ctx,
+                log_pfx.join("after-complete"),
                 &mut eft,
                 Features::PermittedFEAT_PostTestHook,
                 (&main_rundata, &fallback),
@@ -182,12 +194,14 @@ async fn process_main_test<Fallback: SelectableSource>(
 
 async fn try_alternative_tests_of_main<Source: SelectableSource>(
     ctx: &Context,
+    log_pfx: LogPfx,
     eft: &mut Effects,
     alternatives: impl IntoIterator<Item = &AlternativeTest>,
     fallback: Source,
 ) -> Result<Vec<PAlternativeTest>, MainTestFailure> {
     let mut tried_alternatives = vec![];
-    for alternative in alternatives {
+    for (index, alternative) in alternatives.into_iter().enumerate() {
+        let log_pfx = log_pfx.join(index);
         let alt_hooks = alternative.general().hooks();
 
         // #########################################
@@ -195,7 +209,13 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
         // #########################################
         let (before_alt, sig) = alt_hooks
             .before_alt()
-            .run_all(ctx, eft, Features::PermittedFEAT_PreTestHook, &fallback)
+            .run_all(
+                ctx,
+                log_pfx.join("before-alt"),
+                eft,
+                Features::PermittedFEAT_PreTestHook,
+                &fallback,
+            )
             .await;
 
         // #########################################
@@ -208,6 +228,7 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
         } else {
             let alternative_result = run_actual_test(
                 ctx,
+                log_pfx.join("alt"),
                 alternative.as_ref(),
                 (&eft, &fallback),
                 Features::PermittedFEAT_PassTestCrit,
@@ -227,6 +248,7 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
                 .after_alt()
                 .run_all(
                     ctx,
+                    log_pfx.join("after-alt"),
                     eft,
                     Features::PermittedFEAT_PostTestHook,
                     (&alt_rundata, &fallback),

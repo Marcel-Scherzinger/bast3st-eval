@@ -10,7 +10,7 @@ use scratch_test_interpreter::{
 use scratch_test_model::{Id, ProjectDoc, attrs::DataId};
 
 use crate::{
-    Features,
+    Features, LogPfx,
     evaluation::{
         Context, Rundata, SelectableSource, SingleEvaluation, SingleEvaluationError,
         single_evaluation::EvalSignal,
@@ -60,22 +60,29 @@ pub struct ActualTestResult {
 impl ActualTestResult {
     pub async fn from_run<Hooks, Source: SelectableSource>(
         settings: &Context,
+        log_pfx: LogPfx,
         test: &GeneralTest<Hooks>,
         source: Source,
         features: Features,
     ) -> Self {
-        run_actual_test(settings, test, source, features).await
+        run_actual_test(settings, log_pfx, test, source, features).await
     }
 }
 
 pub(crate) async fn run_actual_test<Hooks, Source: SelectableSource>(
     settings: &Context,
+    log_pfx: LogPfx,
     test: &GeneralTest<Hooks>,
     fallback: Source,
     features: Features,
 ) -> ActualTestResult {
-    let (testdata, _state, error, _limits) =
-        run_single_test_for_selectable(settings, settings.doc(), settings.initial_block(), test);
+    let (testdata, _state, error, _limits) = run_single_test_for_selectable(
+        settings,
+        log_pfx.clone(),
+        settings.doc(),
+        settings.initial_block(),
+        test,
+    );
 
     if let Some(error) = error {
         // some errors like infinite loops can be counted as immediate test failure,
@@ -103,6 +110,7 @@ pub(crate) async fn run_actual_test<Hooks, Source: SelectableSource>(
 
     let criterion = test.criterion();
     match SingleEvaluation::new(
+        log_pfx.join("pass-crit"),
         settings.entities(),
         criterion.cast_id(),
         &(&testdata, &fallback),
@@ -127,6 +135,7 @@ pub(crate) async fn run_actual_test<Hooks, Source: SelectableSource>(
 
 fn run_single_test_for_selectable<Hooks>(
     ctx: &Context,
+    _log_pfx: LogPfx,
     doc: &ProjectDoc,
     initial_block: &Id,
     general: &GeneralTest<Hooks>,

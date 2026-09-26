@@ -5,7 +5,7 @@ use either::Either;
 use reqwest::Url;
 
 use crate::{
-    Features,
+    Features, LogPfx,
     catchable::cerr,
     evaluation::{RequiredFeatures, SelectableSource},
     spec::{
@@ -25,6 +25,7 @@ pub type AllowedNetClosure =
 
 #[derive(derive_more::Debug)]
 pub struct SingleEvaluation<'e, 's, S, EvalStatus> {
+    log_pfx: LogPfx,
     entities: &'e BTreeMap<EntityId, Entity>,
     selectable: &'s S,
     entry_point: EntityId,
@@ -125,6 +126,7 @@ impl<'e, 's, S: SelectableSource, X> SingleEvaluation<'e, 's, S, X> {
 
 impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning> {
     pub fn new(
+        log_pfx: LogPfx,
         entities: &'e BTreeMap<EntityId, Entity>,
         entry_point: EntityId,
         selectable_data: &'s S,
@@ -133,6 +135,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
     ) -> Result<Self, EntryPointMissing> {
         if entities.contains_key(&entry_point) {
             Ok(Self {
+                log_pfx,
                 entities,
                 entry_point,
                 selectable: selectable_data,
@@ -160,7 +163,11 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
     pub async fn run_step(&mut self) -> Result<bool, AnyEvalTermination> {
         self.further_steps_and_no_early_termination.clone()?;
         self.further_steps_and_no_early_termination = self._run_step().await;
-        self.further_steps_and_no_early_termination.clone()
+        self.further_steps_and_no_early_termination
+            .clone()
+            .inspect_err(|err| {
+                log::debug!("[{}] early termination during eval: {err:?}", self.log_pfx)
+            })
     }
 
     // This function doesn't mutate the state so the produced error
@@ -183,6 +190,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
     ) -> SingleEvaluation<'e, 's, S, EvaluationFinished> {
         while self.run_step().await.is_ok_and(|x| x) {}
         SingleEvaluation {
+            log_pfx: self.log_pfx,
             entities: self.entities,
             selectable: self.selectable,
             entry_point: self.entry_point,
@@ -203,6 +211,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
     ) -> SingleEvaluation<'e, 's, S, EvaluationFinishedOrCancelled> {
         while self.run_step().await.is_ok_and(|x| x) {}
         SingleEvaluation {
+            log_pfx: self.log_pfx,
             entities: self.entities,
             selectable: self.selectable,
             entry_point: self.entry_point,
@@ -255,6 +264,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
             Err((info, err)) => (info, Err(err)),
             Ok((url, specific)) => match &specific {
                 InnerNetworkRequest::Get => {
+                    log::debug!("[{}] start network GET {url}", self.log_pfx);
                     let r = reqwest::get(url.clone())
                         .await
                         .map_err(Text::from_debug)
@@ -268,6 +278,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
                             .as_ref()
                             .map(|x| BTreeMap::from_iter(x.iter().cloned()))
                             .unwrap_or_default();
+                        log::debug!("[{}] start network POST {url} {json:?}", self.log_pfx);
                         let r = client
                             .post(url.clone())
                             .json(&json)
@@ -304,7 +315,11 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
                 .entities
                 .get(&current)
                 .ok_or(FatalError::EntityNotFound(current))?;
-            log::trace!("Run step for entity {current}: {entity:?}");
+            /*
+            log::trace!(
+                "[{}] run step for entity {current}: {entity:?}",
+                self.log_pfx
+            );*/
 
             let machine: Machine<RuntimeAny> = self
                 .machines
@@ -331,6 +346,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
                         }
                         Err(err) => RuntimeAny::Catchable(err),
                     };
+                    log::trace!("[{}] evaluated {} to {:?}", self.log_pfx, current, value);
                     self.values.insert(current, value);
                 }
                 Either::Right(UnfinishedMachine::Missing(m)) => {
@@ -341,6 +357,10 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
                             if let Some(delivered) = self.values.get(id) {
                                 m.call(Ok(delivered))
                             } else {
+                                log::trace!(
+                                    "[{}] {current} requires to evaluate {id} first",
+                                    self.log_pfx
+                                );
                                 if self.id_stack.contains(id) {
                                     Err(FatalError::CyclicIdReferences(*id))?;
                                 }
@@ -352,6 +372,10 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
                         MissingValue::Selector(selector) => {
                             self.used_features |= selector.required_features();
                             self.check_features()?;
+                            log::trace!(
+                                "[{}] {current} requires selector {selector}",
+                                self.log_pfx
+                            );
                             let val = self.get_selector_value(selector).await?;
                             m.call(Ok(val.as_ref()))
                         }
