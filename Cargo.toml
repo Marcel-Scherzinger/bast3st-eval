@@ -28,4 +28,6 @@ dotenvy = "0.15.7"
 env_logger = "0.11.11"
 tokio = {version="1.53.1",features=["macros", "rt"]}
 
-
+[features]
+# do not store and pass contextual information to log messages for extra information
+no-log-pfx = []
