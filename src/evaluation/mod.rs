@@ -25,3 +25,4 @@ pub use testrun2selectable::{
 };
 
 pub use process_hook::{HookFailure, HookResult};
+pub use process_spec::SpecRunError;

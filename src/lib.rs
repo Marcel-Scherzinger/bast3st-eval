@@ -9,6 +9,8 @@ pub use evaluation::Features;
 pub use log_pfx::LogPfx;
 pub use messages::Messages;
 
+pub use evaluation::SpecRunError;
+
 #[cfg(test)]
 mod tests {
     use std::{borrow::Cow, sync::Arc};
