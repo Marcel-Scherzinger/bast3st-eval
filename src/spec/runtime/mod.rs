@@ -21,7 +21,6 @@ use crate::spec::Numeric;
 use crate::{catchable::cerr, spec::PrimitiveValue};
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, From, Serialize, Deserialize)]
-#[serde(tag = "t")]
 pub enum RuntimeAny<E = cerr> {
     #[serde(rename = "crit")]
     #[from]
