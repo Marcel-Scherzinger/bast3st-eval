@@ -2,8 +2,10 @@ use scratch_test_model::{
     ProjectDoc,
     blocks::{BlockKindUnit, EventBlockKindUnit},
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, PartialEq, PartialOrd, Clone, thiserror::Error)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, thiserror::Error, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum InitialBlockAmbiguity {
     #[error("not found")]
     No,

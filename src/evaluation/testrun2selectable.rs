@@ -22,7 +22,8 @@ use crate::{
     },
 };
 
-#[derive(Debug, thiserror::Error, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, thiserror::Error, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum FatalRunError {
     #[error("runerror-file: {_0}")]
     File(#[from] scratch_test_interpreter::error::InvalidFileError),

@@ -6,10 +6,10 @@ pub mod messages;
 pub mod spec;
 
 pub use evaluation::Features;
+pub use evaluation::SpecRunError;
+pub use helpers::ProgramDocError;
 pub use log_pfx::LogPfx;
 pub use messages::Messages;
-
-pub use evaluation::SpecRunError;
 
 #[cfg(test)]
 mod tests {
