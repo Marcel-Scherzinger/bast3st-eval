@@ -18,6 +18,13 @@ impl From<&str> for LogPfx {
     }
 }
 
+#[cfg(not(feature = "no-log-pfx"))]
+impl From<String> for LogPfx {
+    fn from(value: String) -> Self {
+        Self(value.into())
+    }
+}
+
 #[cfg(feature = "no-log-pfx")]
 #[derive(derive_more::Debug, derive_more::Display, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[display("")]
@@ -35,6 +42,12 @@ impl LogPfx {
 #[cfg(feature = "no-log-pfx")]
 impl From<&str> for LogPfx {
     fn from(value: &str) -> Self {
+        Self(())
+    }
+}
+#[cfg(feature = "no-log-pfx")]
+impl From<String> for LogPfx {
+    fn from(value: String) -> Self {
         Self(())
     }
 }
