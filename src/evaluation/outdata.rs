@@ -4,11 +4,12 @@ use derive_more::From;
 use crate::{
     Messages,
     evaluation::{
-        JustFailTestRunError, Rundata, SingleEvaluationError, process_hook::FallibleHookResults,
+        FlagData, JustFailTestRunError, Rundata, SingleEvaluationError,
+        process_hook::FallibleHookResults,
     },
     spec::{
         AlternativeTest, AlternativeTestHooks, Bast3StSpec, Category, CategoryHooks,
-        EndThisTestAction, MainTest, MainTestHooks, RuntimeCriterion, SpecHooks,
+        EndThisTestAction, MainTest, MainTestHooks, NoticeAction, RuntimeCriterion, SpecHooks,
     },
 };
 
@@ -17,6 +18,8 @@ pub struct PSpec {
     pub(crate) messages: Messages<Bast3StSpec>,
     pub(crate) categories: Vec<PCategory>,
     pub(crate) hooks: SpecHooks<FallibleHookResults>,
+    pub(crate) flags: FlagData,
+    pub(crate) notice: Vec<NoticeAction>,
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]

@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use derive_getters::Getters;
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,7 @@ pub struct Bast3StSpec {
     #[serde(default)]
     hooks: SpecHooks,
     #[serde(rename = "nodes")]
-    entities: BTreeMap<EntityId, Entity>,
+    entities: Arc<BTreeMap<EntityId, Entity>>,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize, Getters, Clone)]

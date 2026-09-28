@@ -1,14 +1,16 @@
 use std::fmt::Debug;
 
 use itertools::Itertools;
-use scratch_test_model::ProjectDoc;
+use scratch_test_model::{Id, ProjectDoc};
 use tokio::task::JoinError;
 
 use crate::{
     Features, LogPfx, Messages,
     evaluation::{
         Context, Effects, FatalRunError, PCategory, PSpec, ParamData, SelectableSource,
-        WithEffects, single_evaluation::EvalSignal,
+        initial_block::{InitialBlockAmbiguity, find_initial_block},
+        report::{ReportBuilder, WithSpec},
+        single_evaluation::EvalSignal,
     },
     spec::{Bast3StSpec, MapKey, Numeric, PrimitiveValue, RealMapping, RuntimeValue, SpecHooks},
 };
@@ -19,6 +21,8 @@ pub enum SpecRunError {
     Join(#[from] JoinError),
     #[error("run: {_0}")]
     FatalRun(#[from] FatalRunError),
+    #[error("initial-block: {_0}")]
+    InitialBlock(#[from] InitialBlockAmbiguity),
 }
 
 fn get_blockcount_map(doc: &ProjectDoc) -> (RealMapping, (RuntimeValue, RealMapping)) {
@@ -51,32 +55,44 @@ fn get_blockcount_map(doc: &ProjectDoc) -> (RealMapping, (RuntimeValue, RealMapp
 }
 
 impl PSpec {
-    pub async fn new<Fallback: SelectableSource + Clone + 'static>(
+    pub async fn new<'a, Fallback: SelectableSource + Clone + 'static>(
+        report_builder: ReportBuilder<'a, Fallback, WithSpec>,
+        doc: ProjectDoc,
+        initial_block: Option<Id>,
+    ) -> Result<PSpec, SpecRunError> {
+        let initial_block = initial_block
+            .map(Ok)
+            .unwrap_or_else(|| find_initial_block(&doc).cloned())?;
+        let (ctx, (log_pfx, param_my, fallback, spec)) = report_builder.build(doc, initial_block);
+        Self::inner_new(&ctx, log_pfx, spec, param_my, fallback).await
+    }
+
+    async fn inner_new<Fallback: SelectableSource + Clone + 'static>(
         ctx: &Context,
         log_pfx: impl Into<LogPfx>,
         spec: &Bast3StSpec,
-        param_my: impl Into<RealMapping>,
+        param_my: Option<impl Into<RealMapping>>,
         fallback: Fallback,
-    ) -> Result<WithEffects<PSpec>, SpecRunError> {
+    ) -> Result<PSpec, SpecRunError> {
         let log_pfx = log_pfx.into();
         let (blockcount, _) = get_blockcount_map(ctx.doc());
         let doc = RealMapping::from_iter(vec![("blockcount".into(), blockcount.into())]);
-        let param_my = param_my.into();
-        let all = RealMapping::from_iter(vec![
-            ("doc".into(), doc.into()),
-            ("my".into(), param_my.clone().into()),
-        ]);
+        let all = RealMapping::from_iter(
+            vec![("doc".into(), doc.into())]
+                .into_iter()
+                .chain(param_my.map(|param_my| ("my".into(), param_my.into().into()))),
+        );
 
         let stats = ParamData::from(all);
         Self::new_with_effects(ctx, log_pfx, spec, (stats, fallback)).await
     }
 
-    pub async fn new_with_effects<Fallback: SelectableSource + Clone + 'static>(
+    async fn new_with_effects<Fallback: SelectableSource + Clone + 'static>(
         ctx: &Context,
         log_pfx: LogPfx,
         spec: &Bast3StSpec,
         fallback: Fallback,
-    ) -> Result<WithEffects<PSpec>, SpecRunError> {
+    ) -> Result<PSpec, SpecRunError> {
         let mut categories = vec![];
         let mut eft = Effects::default();
 
@@ -135,16 +151,16 @@ impl PSpec {
         }
         messages.extend(eft.take_messages());
 
-        Ok(WithEffects::new(
-            PSpec {
-                messages,
-                categories,
-                hooks: SpecHooks {
-                    before_all_categories,
-                    after_all_categories,
-                },
+        let (flags, notice) = eft.take_rest();
+        Ok(PSpec {
+            messages,
+            categories,
+            hooks: SpecHooks {
+                before_all_categories,
+                after_all_categories,
             },
-            eft,
-        ))
+            flags,
+            notice,
+        })
     }
 }

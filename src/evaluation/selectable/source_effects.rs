@@ -28,6 +28,9 @@ impl Effects {
     pub fn take_messages<L: MsgType>(&mut self) -> Messages<L> {
         self.messages.drain_msg_of()
     }
+    pub fn take_rest(self) -> (FlagData, Vec<NoticeAction>) {
+        (self.flags, self.notice)
+    }
 }
 
 impl SelectableSource for Effects {
