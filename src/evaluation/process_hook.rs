@@ -1,4 +1,5 @@
 use either::Either;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     Features, LogPfx,
@@ -9,7 +10,8 @@ use crate::{
     spec::{ActionEntity, CriterionEntity, EntityId, HookList, RuntimeAction, RuntimeCriterion},
 };
 
-#[derive(Debug, thiserror::Error, PartialEq, PartialOrd, Clone)]
+#[derive(Debug, thiserror::Error, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum HookFailure {
     #[error("criterion: {_0}")]
     Criterion(SingleEvaluationError),
@@ -22,7 +24,7 @@ pub type FallibleHookResults = Vec<Result<HookResult, HookFailure>>;
 // ##########################################################
 // ##########################################################
 
-#[derive(Debug, PartialEq, PartialOrd, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
 pub struct HookResult {
     pub(crate) criterion: Option<RuntimeCriterion>,
     // pub(crate) eval_signals: Option<StopEval>,

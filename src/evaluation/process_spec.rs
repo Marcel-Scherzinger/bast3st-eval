@@ -153,6 +153,8 @@ impl PSpec {
 
         let (flags, notice) = eft.take_rest();
         Ok(PSpec {
+            title: spec.title().clone().into(),
+            description: spec.description().clone().map(|x| x.into()),
             messages,
             categories,
             hooks: SpecHooks {

@@ -3,11 +3,13 @@ use std::{borrow::Cow, collections::BTreeMap, fmt::Display, sync::Arc};
 use derive_more::{Display, From};
 use either::Either;
 use reqwest::Url;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     Features, LogPfx,
     catchable::cerr,
     evaluation::{RequiredFeatures, SelectableSource},
+    helpers::NoError,
     spec::{
         EndThisTestAction, Entity, EntityId, FatalError, InnerNetworkRequest, Machine,
         MissingValue, NetworkRequest, NetworkResponse, NoticeAction, RuntimeAction, RuntimeAny,
@@ -41,15 +43,19 @@ pub struct SingleEvaluation<'e, 's, S, EvalStatus> {
     _phantom: std::marker::PhantomData<EvalStatus>,
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, thiserror::Error)]
+#[derive(
+    Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, thiserror::Error, Serialize, Deserialize,
+)]
 #[error("entry point id {_0} not in entity set")]
 pub struct EntryPointMissing(EntityId);
 
-#[derive(Debug, PartialEq, PartialOrd, Clone, thiserror::Error)]
-pub enum SingleEvaluationError<Extra: Display = std::convert::Infallible> {
+#[derive(Debug, PartialEq, PartialOrd, Clone, thiserror::Error, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SingleEvaluationError<Extra: Display = NoError> {
     #[error("missing entity/final value: {_0}")]
     EntryPoint(#[from] EntryPointMissing),
     #[error("catchable: {_0:?}")]
+    #[serde(with = "bitflags::serde")]
     Cerr(cerr),
     #[error("fatal: {_0:?}")]
     Fatal(#[from] FatalError),
@@ -297,7 +303,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
 
         self.actions
             .push(RuntimeAction::Notice(NoticeAction::Network {
-                url: Ok(info.0),
+                url: Ok(info.0.to_string().into()),
                 request: info.1,
                 response,
             }));

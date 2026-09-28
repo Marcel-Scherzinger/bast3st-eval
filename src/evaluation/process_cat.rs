@@ -76,6 +76,7 @@ impl PCategory {
 
         Ok(WithEffects::new(
             PCategory {
+                title: category.title().clone().into(),
                 messages,
                 tests: p_tests,
                 hooks: CategoryHooks {

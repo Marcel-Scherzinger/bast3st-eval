@@ -128,7 +128,8 @@ impl RequiredFeatures for ActionEntity {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
+#[serde(tag = "t", rename_all = "kebab-case")]
 pub enum RuntimeAction {
     SendMsg(SendMsgAction),
     EndThisTest(EndThisTestAction),
@@ -136,17 +137,19 @@ pub enum RuntimeAction {
     Notice(NoticeAction),
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
+#[serde(tag = "t", rename_all = "kebab-case")]
 pub enum NoticeAction {
+    #[serde(rename_all = "kebab-case")]
     Network {
-        url: Result<reqwest::Url, (Text, Text)>,
+        url: Result<Text, (Text, Text)>,
         request: InnerNetworkRequest,
         // NetworkResponse or Debug of reqwest::Error
         response: Result<Result<NetworkResponse, Text>, cerr>,
     },
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters, Serialize, Deserialize)]
 pub struct SetFlagAction {
     mode: SetFlagMode,
     key: Vec<MapKey>,
@@ -158,7 +161,7 @@ impl SetFlagAction {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters, Serialize, Deserialize)]
 pub struct EndThisTestAction {
     mode: EndThisTestMode,
     explaination: Text,
@@ -173,7 +176,7 @@ impl EndThisTestMode {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone, Getters)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters, Serialize, Deserialize)]
 pub struct SendMsgAction {
     level: MessageSendingLevel,
     severity: MessageSeverity,

@@ -1,4 +1,5 @@
 use derive_more::Display;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     evaluation::RequiredFeatures,
@@ -9,11 +10,14 @@ use crate::{
     },
 };
 
-#[derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash, Clone)]
+#[derive(Debug, Display, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
 pub enum Selector {
     #[display("{_0}")]
+    #[serde(rename = "coremap")]
     Coremap(Coremapping),
     #[display("{mapping}{key:?}")]
+    #[serde(rename = "coreitm")]
     CoremapItem {
         mapping: Coremapping,
         key: Vec<MapKey>,

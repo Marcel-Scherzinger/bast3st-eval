@@ -1,10 +1,12 @@
 use std::borrow::Cow;
 
+use serde::{Deserialize, Serialize};
+
 use crate::spec::{Array, Coremapping, RealMapping, RuntimeAny, Selector};
 
 use super::{Features, SelectableSource};
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct Rundata {
     input: RuntimeAny,     // Array
     output: RuntimeAny,    // Array

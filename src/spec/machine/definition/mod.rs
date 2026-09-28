@@ -6,6 +6,7 @@ pub use checked::*;
 pub(crate) use normal::cast_param;
 pub use normal::*;
 pub use on_task::OnTask;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     Features,
@@ -39,7 +40,7 @@ pub enum UnfinishedMachine<R> {
     RegexTask(MachineWithTask<CompiledRegex, R>),
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone, thiserror::Error)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, thiserror::Error, Serialize, Deserialize)]
 pub enum FatalError {
     #[error("referenced entity {_0} not in store")]
     EntityNotFound(EntityId),

@@ -130,7 +130,6 @@ pub enum CriterionEntity {
         failure_explaination: Option<ValueReference>,
         #[serde(rename = "c")]
         criterion: EntityId<CriterionEntity>,
-        #[serde(with = "bitflags::serde")]
         error: cerr,
         #[serde(rename = "only-if")]
         only_if: Option<EntityId<CriterionEntity>>,

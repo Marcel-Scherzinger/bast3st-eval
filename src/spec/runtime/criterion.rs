@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 use crate::{
     catchable::cerr,
     spec::{
@@ -8,7 +10,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub struct RuntimeCriterion {
     fulfilled: Result<(), Option<Text>>,
     inner: InnerRuntimeCriterion,
@@ -78,7 +80,8 @@ impl RuntimeCriterion {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, PartialOrd)]
+#[derive(Debug, PartialEq, Clone, PartialOrd, Serialize, Deserialize)]
+#[serde(tag = "t", rename_all = "kebab-case")]
 pub enum InnerRuntimeCriterion {
     Negated {
         clause: Box<RuntimeCriterion>,
@@ -153,4 +156,37 @@ pub enum InnerRuntimeCriterion {
     SpecialCrit {
         variant: SpecialCritVariant,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::spec::RuntimeCriterion;
+
+    #[test]
+    fn test_serde_runtime_criterion() {
+        let val_ok = RuntimeCriterion {
+            fulfilled: Ok(()),
+            inner: super::InnerRuntimeCriterion::Equal {
+                left: "x".into(),
+                right: "x".into(),
+            },
+        };
+        let val_err = RuntimeCriterion {
+            fulfilled: Err(Some("test".into())),
+            inner: super::InnerRuntimeCriterion::Equal {
+                left: "x".into(),
+                right: "y".into(),
+            },
+        };
+        let val_ok_ser = serde_json::to_string(&val_ok).unwrap();
+        let val_err_ser = serde_json::to_string(&val_err).unwrap();
+        assert_eq!(
+            r#"{"fulfilled":{"Ok":null},"inner":{"t":"equal","left":"x","right":"x"}}"#,
+            val_ok_ser
+        );
+        assert_eq!(
+            r#"{"fulfilled":{"Err":"test"},"inner":{"t":"equal","left":"x","right":"y"}}"#,
+            val_err_ser
+        );
+    }
 }

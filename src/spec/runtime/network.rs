@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, sync::Arc};
 
 use derive_getters::Getters;
+use serde::{Deserialize, Serialize};
 
 use crate::spec::{RealMapping, Text, runtime::RuntimeValue};
 
@@ -32,16 +33,17 @@ impl NetworkRequest {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum InnerNetworkRequest {
     Get,
+    #[serde(rename_all = "kebab-case")]
     Post {
         json: Option<Arc<[(Text, RuntimeValue)]>>,
     },
 }
 
-/// - status: u16
-#[derive(Debug, PartialEq, PartialOrd, Clone)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
 pub struct NetworkResponse {
     status: u16,
 }

@@ -119,6 +119,7 @@ pub enum Coremapping {
     Output,
     Lists,
     #[display("VARS")]
+    #[serde(rename = "vars")]
     Variables,
     Randoms,
     Flags,

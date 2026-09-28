@@ -178,6 +178,7 @@ async fn process_main_test<Fallback: SelectableSource>(
     let out = PMainTest {
         messages,
         general: PGeneralTest {
+            title: test.general().title().clone().into(),
             status: main_status,
             data: main_rundata,
             hooks: MainTestHooks {
@@ -261,6 +262,7 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
         tried_alternatives.push(PAlternativeTest {
             messages: eft.take_messages(),
             general: PGeneralTest {
+                title: alternative.general().title().clone().into(),
                 status: alt_status,
                 data: alt_rundata,
                 hooks: AlternativeTestHooks {

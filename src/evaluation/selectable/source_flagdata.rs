@@ -3,6 +3,8 @@ use std::{
     collections::{BTreeMap, VecDeque},
 };
 
+use serde::{Deserialize, Serialize};
+
 use crate::spec::{
     Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
     RuntimeValue, Selector, SetFlagMode, Text,
@@ -10,11 +12,21 @@ use crate::spec::{
 
 use super::{Features, SelectableSource};
 
-#[derive(derive_more::Debug, PartialEq, PartialOrd, Clone)]
+#[derive(derive_more::Debug, PartialEq, PartialOrd, Serialize, Deserialize)]
+#[serde(into = "RealMapping", from = "RealMapping")]
 pub struct MappingData<T> {
     data: RuntimeAny, // RealMapping
     #[debug(skip)]
     _phantom: std::marker::PhantomData<T>,
+}
+
+impl<T> Clone for MappingData<T> {
+    fn clone(&self) -> Self {
+        Self {
+            data: self.data.clone(),
+            _phantom: Default::default(),
+        }
+    }
 }
 
 #[derive(derive_more::Debug, PartialEq, PartialOrd, Clone)]

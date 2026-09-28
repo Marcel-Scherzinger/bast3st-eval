@@ -5,6 +5,7 @@ mod network;
 mod selector;
 mod tasks;
 
+use crate::helpers::NoError;
 pub use crate::spec::RuntimeAction;
 pub use crate::spec::runtime::criterion::{InnerRuntimeCriterion, RuntimeCriterion};
 pub use collections::{Array, MappingOrArray, RealMapping};
@@ -19,17 +20,22 @@ pub use tasks::{CompiledRegex, SpecificTaskRequest};
 use crate::spec::Numeric;
 use crate::{catchable::cerr, spec::PrimitiveValue};
 
-#[derive(Debug, PartialEq, PartialOrd, Clone, From)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, From, Serialize, Deserialize)]
+#[serde(tag = "t")]
 pub enum RuntimeAny<E = cerr> {
+    #[serde(rename = "crit")]
     #[from]
     Criterion(RuntimeCriterion),
+    #[serde(rename = "act")]
     #[from]
     Action(RuntimeAction),
+    #[serde(rename = "val")]
     #[from]
     Value(RuntimeValue),
+    #[serde(rename = "err")]
     Catchable(E),
 }
-pub type RuntimeAnyWithoutCerr = RuntimeAny<std::convert::Infallible>;
+pub type RuntimeAnyWithoutCerr = RuntimeAny<NoError>;
 
 impl From<cerr> for RuntimeAny {
     fn from(value: cerr) -> Self {
@@ -37,10 +43,15 @@ impl From<cerr> for RuntimeAny {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, From, Default)]
+#[derive(
+    Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Clone, From, Default, Serialize, Deserialize,
+)]
+#[serde(tag = "t")]
 pub enum MaybeEval<T> {
+    #[serde(rename = "unev")]
     #[default]
     Unevaluated,
+    #[serde(rename = "eval")]
     Evaluated(T),
 }
 impl<T> MaybeEval<T> {

@@ -1,8 +1,10 @@
 use std::collections::BTreeSet;
 
+use serde::{Deserialize, Serialize};
+
 use crate::messages::message::Message;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Messages<Level>(pub(super) BTreeSet<Message<Level>>);
 
 impl<Level> IntoIterator for Messages<Level> {

@@ -1410,6 +1410,7 @@ dependencies = [
  "rand",
  "scratch-test-model",
  "scratch-test-value",
+ "serde",
  "thiserror",
 ]
 
@@ -1427,6 +1428,7 @@ dependencies = [
  "ouroboros",
  "scratch-test-model-proc",
  "scratch-test-value",
+ "serde",
  "serde_json",
  "thiserror",
  "zip",

@@ -1,9 +1,10 @@
 use crate::spec::{MessageSeverity, Text};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Message<Level> {
     pub(super) severity: MessageSeverity,
     pub(super) text: Text,
+    #[serde(skip)]
     pub(super) _phantom: std::marker::PhantomData<Level>,
 }
 

@@ -8,6 +8,7 @@ use scratch_test_interpreter::{
     error::UserError,
 };
 use scratch_test_model::{Id, ProjectDoc, attrs::DataId};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     Features, LogPfx,
@@ -34,7 +35,8 @@ pub enum FatalRunError {
 /// An error that indicates that something didn't work out as expected with the
 /// users submission, but it is not as severe as a [`FatalRunError`] and it will
 /// be counted as a failed test without checking the criterion at all.
-#[derive(Debug, thiserror::Error, PartialEq, PartialOrd, Clone)]
+#[derive(Debug, thiserror::Error, PartialEq, PartialOrd, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub enum JustFailTestRunError {
     #[error("runerror-user: {_0}")]
     User(#[from] UserError),

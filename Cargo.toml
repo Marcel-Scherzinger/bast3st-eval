@@ -15,7 +15,7 @@ log = "0.4.34"
 rand = "0.10.3"
 regex = "1.13.1"
 reqwest = { version = "0.13.5", features = ["json"] }
-scratch-test-interpreter = { git = "https://github.com/marcel-scherzinger/scratch-test-interpreter", version = "0.1.0" }
+scratch-test-interpreter = { git = "https://github.com/marcel-scherzinger/scratch-test-interpreter", version = "0.1.0", features = ["serde"] }
 scratch-test-model = { git = "https://github.com/marcel-scherzinger/scratch-test-model", version = "0.1.0" }
 scratch-test-value = { git = "https://github.com/marcel-scherzinger/scratch-test-value", version = "0.1.0", features = ["serde", "thread-share"] }
 serde = { version = "1.0.229", features = ["derive", "rc"] }

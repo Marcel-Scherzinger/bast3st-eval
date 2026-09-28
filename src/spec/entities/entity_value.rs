@@ -138,7 +138,6 @@ pub enum ValueEntity {
     Catch {
         #[serde(rename = "v")]
         value: ValueReference,
-        #[serde(with = "bitflags::serde")]
         error: cerr,
         #[serde(rename = "only-if")]
         only_if: Option<EntityId<CriterionEntity>>,
