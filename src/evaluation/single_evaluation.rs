@@ -271,10 +271,7 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
             Ok((url, specific)) => match &specific {
                 InnerNetworkRequest::Get => {
                     log::debug!("[{}] start network GET {url}", self.log_pfx);
-                    let r = reqwest::get(url.clone())
-                        .await
-                        .map_err(Text::from_debug)
-                        .map(NetworkResponse::from);
+                    let r = reqwest::get(url.clone()).await.map_err(Text::from_debug);
                     ((url, specific), Ok(r))
                 }
                 InnerNetworkRequest::Post { json } => match reqwest::Client::builder().build() {
@@ -290,16 +287,20 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
                             .json(&json)
                             .send()
                             .await
-                            .map_err(Text::from_debug)
-                            .map(NetworkResponse::from);
+                            .map_err(Text::from_debug);
                         ((url, specific), Ok(r))
                     }
                 },
             },
         };
+        let response: Result<Result<NetworkResponse, Text>, cerr> = match response {
+            Err(e) => Err(e),
+            Ok(Ok(o)) => NetworkResponse::new(o).await.map(Ok),
+            Ok(Err(e)) => Ok(Err(e)),
+        };
         let return_value = response
             .clone()
-            .and_then(|res| res.map_err(|_| cerr::network_external));
+            .and_then(|x| x.map_err(|_| cerr::network_external));
 
         self.actions
             .push(RuntimeAction::Notice(NoticeAction::Network {

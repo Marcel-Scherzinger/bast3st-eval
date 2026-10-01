@@ -45,7 +45,7 @@ fn get_blockcount_map(doc: &ProjectDoc) -> (RealMapping, (RuntimeValue, RealMapp
             )
         })
         .collect::<RealMapping>()
-        .with_default(Some(0.into()));
+        .with_default(Ok(0.into()));
 
     let blockcount = RealMapping::from_iter(vec![
         ("total".into(), total.clone()),
@@ -76,12 +76,12 @@ impl PSpec {
     ) -> Result<PSpec, SpecRunError> {
         let log_pfx = log_pfx.into();
         let (blockcount, _) = get_blockcount_map(ctx.doc());
-        let doc = RealMapping::from_iter(vec![("blockcount".into(), blockcount.into())]);
-        let all = RealMapping::from_iter(
-            vec![("doc".into(), doc.into())]
-                .into_iter()
-                .chain(param_my.map(|param_my| ("my".into(), param_my.into().into()))),
-        );
+        let doc =
+            RealMapping::from_iter(vec![("blockcount".into(), RuntimeValue::from(blockcount))]);
+        let all =
+            RealMapping::from_iter(vec![("doc".into(), doc.into())].into_iter().chain(
+                param_my.map(|param_my| ("my".into(), RuntimeValue::from(param_my.into()))),
+            ));
 
         let stats = ParamData::from(all);
         Self::new_with_effects(ctx, log_pfx, spec, (stats, fallback)).await

@@ -1,3 +1,4 @@
+use either::Either;
 use scratch_test_value::SNumber;
 use serde::{Deserialize, Serialize};
 
@@ -5,8 +6,8 @@ use crate::{
     catchable::cerr,
     spec::{
         ActionEntity, Coremapping, CriterionEntity, EntityId, FatalError, MapKey, MappingOrArray,
-        NetworkMethod, Numeric, PrimitiveValue, PropertyPerspective, RealMapping, RuntimeAction,
-        Text, ValueReference,
+        NetworkMethod, Numeric, PrimitiveIntoText, PrimitiveValue, PropertyPerspective,
+        RealMapping, RuntimeAction, Text, ValueReference,
         machine::{Machine, MachineConstruction, MachineConstructionN},
         runtime::{
             Array, ClarifiedCerrMerging, CompiledRegex, NetworkRequest, NetworkResponse,
@@ -226,15 +227,17 @@ impl ValueEntity {
                         val(mapping.keys().map(|x| x.to_prim()).collect::<Array>())
                     }
                     (mapping, "values") => val(mapping.value_array()),
-                    (mapping, "sum") => val(mapping.sum()),
+                    (mapping, "sum") => {
+                        Machine::from_res(mapping.sum().map(val).map_err(Either::Left))
+                    }
                     (_, _) => FatalError::UnknownViewPerspective(perspective.into()).into(),
                 }
             }),
-            Self::Trim { value } => map_simple!(value: &Text; trim),
-            Self::TrimStart { value } => map_simple!(value: &Text; trim_start),
-            Self::TrimEnd { value } => map_simple!(value: &Text; trim_end),
-            Self::ToUpper { value } => map_simple!(value: &Text; to_uppercase),
-            Self::ToLower { value } => map_simple!(value: &Text; to_lowercase),
+            Self::Trim { value } => map_simple!(value: PrimitiveIntoText; trim),
+            Self::TrimStart { value } => map_simple!(value: PrimitiveIntoText; trim_start),
+            Self::TrimEnd { value } => map_simple!(value: PrimitiveIntoText; trim_end),
+            Self::ToUpper { value } => map_simple!(value: PrimitiveIntoText; to_uppercase),
+            Self::ToLower { value } => map_simple!(value: PrimitiveIntoText; to_lowercase),
             Self::Abs { value } => map_simple!(value: &Numeric; abs),
             Self::Floor { value } => map_simple!(value: &Numeric; floor),
             Self::Ceil { value } => map_simple!(value: &Numeric; ceil),
@@ -302,11 +305,14 @@ impl ValueEntity {
                 let perspective = *perspective;
                 value.query(move |value: RuntimeValue| match perspective {
                     PropertyPerspective::Sum => {
-                        let sum: Numeric = match value {
+                        let sum = match value {
                             RuntimeValue::Comp(ma) => ma.sum(),
-                            value @ RuntimeValue::Prim(_) => [value].iter().sum(),
+                            value @ RuntimeValue::Prim(_) => Ok([value].iter().sum()),
                         };
-                        RuntimeValue::Prim(PrimitiveValue::Number(sum)).into()
+                        Machine::from_res(
+                            sum.map(|sum| RuntimeValue::Prim(PrimitiveValue::Number(sum)).into())
+                                .map_err(Either::Left),
+                        )
                     }
                     PropertyPerspective::Length => {
                         let length: usize = match value {
@@ -349,10 +355,14 @@ impl ValueEntity {
                         ) => cerr::regex_invalidHaystack.into(),
                         RuntimeValue::Comp(MappingOrArray::Array(array)) => {
                             for item in array.iter() {
-                                if let RuntimeValue::Prim(PrimitiveValue::Str(text)) = item
-                                    && let Some(capture) = pattern.captures(text)
-                                {
-                                    return process_capture_group(capture, group);
+                                match item {
+                                    Ok(RuntimeValue::Prim(PrimitiveValue::Str(text)))
+                                        if let Some(capture) = pattern.captures(text) =>
+                                    {
+                                        return process_capture_group(capture, group);
+                                    }
+                                    Err(err) => return Machine::from(*err),
+                                    _ => {}
                                 }
                             }
                             Machine::from(cerr::regex_noMatch)
@@ -457,8 +467,8 @@ fn eval_post_request(
     mut final_json: Vec<(Text, RuntimeValue)>,
 ) -> Machine<NetworkResponse> {
     if let Some((k, v)) = reversed_json.pop() {
-        (&k, &v).query_n(|k: Text, v: RuntimeValue| {
-            final_json.push((k, v));
+        (&k, &v).query_n(|k: PrimitiveIntoText, v: RuntimeValue| {
+            final_json.push((k.into(), v));
             eval_post_request(server, route, reversed_json, final_json)
         })
     } else {
@@ -507,8 +517,8 @@ fn eval_concat(
     mut finished: String,
 ) -> Machine<RuntimeValue> {
     if let Some(x) = reversed_exprs.pop() {
-        x.query_ref(|next: &Text| {
-            finished.push_str(next);
+        x.query(|next: PrimitiveIntoText| {
+            finished.push_str(&next);
             eval_concat(reversed_exprs, finished)
         })
     } else {

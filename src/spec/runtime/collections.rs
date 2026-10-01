@@ -16,7 +16,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Default, From, Serialize, Deserialize)]
-pub struct Array(Arc<[RuntimeValue]>);
+pub struct Array(Arc<[Result<RuntimeValue, cerr>]>);
 
 #[derive(derive_more::Debug, Clone, PartialEq, PartialOrd, From, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -42,10 +42,10 @@ impl MappingOrArray {
             Self::Mapping(m) => Either::Right(m.keys().map(Cow::Borrowed)),
         }
     }
-    pub fn sum(&self) -> Numeric {
+    pub fn sum(&self) -> Result<Numeric, cerr> {
         match self {
             Self::Array(a) => a.sum(),
-            Self::Mapping(m) => m.values().sum(),
+            Self::Mapping(m) => m.sum_values(),
         }
     }
     pub fn value_array(&self) -> Array {
@@ -61,7 +61,7 @@ impl MappingOrArray {
             (Self::Array(_), MapKey::Str(_)) => Err(cerr::collection_keyInvalidForArray),
         }
     }
-    pub fn to_btreemap(&self) -> BTreeMap<MapKey, RuntimeValue> {
+    pub fn to_btreemap(&self) -> BTreeMap<MapKey, Result<RuntimeValue, cerr>> {
         match self {
             Self::Mapping(x) => x.mapping.as_ref().clone(),
             Self::Array(x) => x.clone().into(),
@@ -69,67 +69,84 @@ impl MappingOrArray {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, Default, From, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, From, Serialize, Deserialize)]
 #[serde(
-    from = "Arc<BTreeMap<MapKey, RuntimeValue>>",
-    into = "Arc<BTreeMap<MapKey, RuntimeValue>>"
+    from = "Arc<BTreeMap<MapKey, Result<RuntimeValue, cerr>>>",
+    into = "Arc<BTreeMap<MapKey, Result<RuntimeValue, cerr>>>"
 )]
 pub struct RealMapping {
     #[from]
-    mapping: Arc<BTreeMap<MapKey, RuntimeValue>>,
+    mapping: Arc<BTreeMap<MapKey, Result<RuntimeValue, cerr>>>,
     #[from(skip)]
     #[serde(skip)]
-    default: Option<Box<RuntimeValue>>,
+    default: Result<Box<RuntimeValue>, cerr>,
 }
-
-impl From<Arc<BTreeMap<MapKey, RuntimeValue>>> for RealMapping {
-    fn from(value: Arc<BTreeMap<MapKey, RuntimeValue>>) -> Self {
+impl Default for RealMapping {
+    fn default() -> Self {
         Self {
-            mapping: value,
-            default: None,
+            mapping: Default::default(),
+            default: Err(cerr::collection_valueNotFound),
         }
     }
 }
 
-impl From<RealMapping> for Arc<BTreeMap<MapKey, RuntimeValue>> {
+impl From<Arc<BTreeMap<MapKey, Result<RuntimeValue, cerr>>>> for RealMapping {
+    fn from(value: Arc<BTreeMap<MapKey, Result<RuntimeValue, cerr>>>) -> Self {
+        Self {
+            mapping: value,
+            default: Err(cerr::collection_valueNotFound),
+        }
+    }
+}
+
+impl From<RealMapping> for Arc<BTreeMap<MapKey, Result<RuntimeValue, cerr>>> {
     fn from(value: RealMapping) -> Self {
         value.mapping
     }
 }
 
-impl AsRef<BTreeMap<MapKey, RuntimeValue>> for RealMapping {
-    fn as_ref(&self) -> &BTreeMap<MapKey, RuntimeValue> {
+impl AsRef<BTreeMap<MapKey, Result<RuntimeValue, cerr>>> for RealMapping {
+    fn as_ref(&self) -> &BTreeMap<MapKey, Result<RuntimeValue, cerr>> {
         &self.mapping
     }
 }
 
 impl RealMapping {
     pub fn new_with_default(
-        mapping: Arc<BTreeMap<MapKey, RuntimeValue>>,
-        default: Option<Box<RuntimeValue>>,
+        mapping: Arc<BTreeMap<MapKey, Result<RuntimeValue, cerr>>>,
+        default: Option<Result<Box<RuntimeValue>, cerr>>,
     ) -> Self {
-        Self { mapping, default }
+        Self {
+            mapping,
+            default: default.unwrap_or(Err(cerr::collection_valueNotFound)),
+        }
     }
-    pub fn with_default(&self, default: Option<RuntimeValue>) -> Self {
+    pub fn with_default(&self, default: Result<RuntimeValue, cerr>) -> Self {
         Self {
             mapping: self.mapping.clone(),
             default: default.map(Box::from),
         }
     }
-    pub fn keys(&self) -> std::collections::btree_map::Keys<'_, MapKey, RuntimeValue> {
+    pub fn keys(
+        &self,
+    ) -> std::collections::btree_map::Keys<'_, MapKey, Result<RuntimeValue, cerr>> {
         self.mapping.keys()
     }
-    pub fn values(&self) -> std::collections::btree_map::Values<'_, MapKey, RuntimeValue> {
+    pub fn values(
+        &self,
+    ) -> std::collections::btree_map::Values<'_, MapKey, Result<RuntimeValue, cerr>> {
         self.mapping.values()
     }
     pub fn len(&self) -> usize {
         self.mapping.len()
     }
     pub fn get(&self, key: &MapKey) -> Result<&RuntimeValue, cerr> {
-        self.mapping
-            .get(key)
-            .or(self.default.as_deref())
-            .ok_or(cerr::collection_valueNotFound)
+        if let Some(item) = self.mapping.get(key) {
+            item.as_ref()
+        } else {
+            self.default.as_deref()
+        }
+        .map_err(|x| *x)
     }
     /// Ok(None) means self (empty key)
     pub fn get_by_seq<'a, 'k>(
@@ -154,11 +171,14 @@ impl RealMapping {
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    pub fn iter(&self) -> impl Iterator<Item = (&MapKey, &RuntimeValue)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&MapKey, &Result<RuntimeValue, cerr>)> {
         self.mapping.iter()
     }
 
-    pub fn with_merged(&self, other: &BTreeMap<MapKey, RuntimeValue>) -> Self {
+    pub fn with_merged(
+        &self,
+        other: &BTreeMap<MapKey, Result<RuntimeValue, cerr>>,
+    ) -> Result<Self, cerr> {
         let merged = self.with_new_keys(
             other
                 .iter()
@@ -168,10 +188,10 @@ impl RealMapping {
         merged
     }
 
-    pub fn with_new_keys<K: Into<MapKey>, V: Into<RuntimeValue>>(
+    pub fn with_new_keys<K: Into<MapKey>, V: Into<Result<RuntimeValue, cerr>>>(
         &self,
         other: impl IntoIterator<Item = (VecDeque<K>, V)>,
-    ) -> RealMapping {
+    ) -> Result<RealMapping, cerr> {
         let mut extendable = DeepExtendable::from(self.mapping.as_ref().clone());
         extendable.ensure_inner();
 
@@ -180,40 +200,61 @@ impl RealMapping {
             extendable.insert_path(keys.into_iter().map(|k| k.into()).collect(), value.into());
         }
 
-        let extendable = if let RuntimeValue::Comp(MappingOrArray::Mapping(m)) = extendable.into() {
-            m
-        } else {
-            Default::default()
+        let extendable = match extendable.into() {
+            Ok(RuntimeValue::Comp(MappingOrArray::Mapping(m))) => m,
+            Err(err) => Err(err)?,
+            _ => Default::default(),
         };
 
-        RealMapping {
+        Ok(RealMapping {
             mapping: extendable.mapping,
             default: self.default.clone(),
+        })
+    }
+    fn sum_values(&self) -> Result<SNumber, cerr> {
+        let mut out = Numeric::Int(0);
+        for v in self.values() {
+            match v.as_ref().map_err(|x| *x)? {
+                RuntimeValue::Prim(PrimitiveValue::Number(v)) => {
+                    out = out.q_add_numbers(v, &mut ())
+                }
+                RuntimeValue::Prim(PrimitiveValue::Str(t)) => {
+                    if let Ok(t) = t.parse() {
+                        out = out.q_add_numbers(&Numeric::Int(t), &mut ())
+                    } else if let Ok(t) = t.parse() {
+                        out = out.q_add_numbers(&Numeric::Float(t), &mut ())
+                    }
+                }
+                RuntimeValue::Comp(_) => (),
+            }
         }
+        Ok(out)
     }
 }
 
 // TODO: vulnerable to stack overflow
-impl From<RuntimeValue> for DeepExtendable {
-    fn from(value: RuntimeValue) -> Self {
+impl From<Result<RuntimeValue, cerr>> for DeepExtendable {
+    fn from(value: Result<RuntimeValue, cerr>) -> Self {
         match value {
-            RuntimeValue::Prim(x) => Self::Leaf(x),
-            RuntimeValue::Comp(c) => Self::from(c.to_btreemap()),
+            Ok(RuntimeValue::Prim(x)) => Self::Leaf(Ok(x)),
+            Ok(RuntimeValue::Comp(c)) => Self::from(c.to_btreemap()),
+            Err(err) => Self::Leaf(Err(err)),
         }
     }
 }
 
 // TODO: vulnerable to stack overflow
-impl From<DeepExtendable> for RuntimeValue {
+impl From<DeepExtendable> for Result<RuntimeValue, cerr> {
     fn from(value: DeepExtendable) -> Self {
         match value {
-            DeepExtendable::Leaf(l) => Self::Prim(l),
-            DeepExtendable::Inner(i) => RealMapping::from(
+            DeepExtendable::Leaf(Ok(l)) => Ok(RuntimeValue::Prim(l)),
+            DeepExtendable::Leaf(Err(err)) => Err(err),
+            DeepExtendable::Inner(i) => Ok(RealMapping::from(
                 i.into_iter()
-                    .map(|(k, v)| (k, RuntimeValue::from(v)))
+                    .map(|(k, v)| (k, Result::from(v)))
                     .collect::<BTreeMap<_, _>>(),
             )
-            .into(),
+            .into()),
         }
     }
 }
@@ -221,15 +262,24 @@ impl From<DeepExtendable> for RuntimeValue {
 impl FromIterator<(MapKey, RuntimeValue)> for RealMapping {
     fn from_iter<T: IntoIterator<Item = (MapKey, RuntimeValue)>>(iter: T) -> Self {
         Self {
+            mapping: BTreeMap::from_iter(iter.into_iter().map(|(x, y)| (x, Ok(y)))).into(),
+            default: Err(cerr::collection_valueNotFound),
+        }
+    }
+}
+
+impl FromIterator<(MapKey, Result<RuntimeValue, cerr>)> for RealMapping {
+    fn from_iter<T: IntoIterator<Item = (MapKey, Result<RuntimeValue, cerr>)>>(iter: T) -> Self {
+        Self {
             mapping: BTreeMap::from_iter(iter).into(),
-            default: None,
+            default: Err(cerr::collection_valueNotFound),
         }
     }
 }
 
 // TODO: vulnerable to stack overflow
-impl From<BTreeMap<MapKey, RuntimeValue>> for DeepExtendable {
-    fn from(value: BTreeMap<MapKey, RuntimeValue>) -> Self {
+impl From<BTreeMap<MapKey, Result<RuntimeValue, cerr>>> for DeepExtendable {
+    fn from(value: BTreeMap<MapKey, Result<RuntimeValue, cerr>>) -> Self {
         Self::Inner(
             value
                 .into_iter()
@@ -237,8 +287,9 @@ impl From<BTreeMap<MapKey, RuntimeValue>> for DeepExtendable {
                     (
                         key,
                         match val {
-                            RuntimeValue::Prim(x) => DeepExtendable::Leaf(x),
-                            RuntimeValue::Comp(x) => DeepExtendable::from(x.to_btreemap()),
+                            Ok(RuntimeValue::Prim(x)) => DeepExtendable::Leaf(Ok(x)),
+                            Ok(RuntimeValue::Comp(x)) => DeepExtendable::from(x.to_btreemap()),
+                            Err(err) => DeepExtendable::Leaf(Err(err)),
                         },
                     )
                 })
@@ -250,7 +301,7 @@ impl From<BTreeMap<MapKey, RuntimeValue>> for DeepExtendable {
 #[derive(Debug, From, Clone)]
 enum DeepExtendable {
     Inner(BTreeMap<MapKey, DeepExtendable>),
-    Leaf(PrimitiveValue),
+    Leaf(Result<PrimitiveValue, cerr>),
 }
 impl DeepExtendable {
     // TODO: vulnerable to stack overflow
@@ -277,14 +328,14 @@ impl DeepExtendable {
     }
 
     #[allow(unused)]
-    fn insert_single(&mut self, key: MapKey, value: PrimitiveValue) {
+    fn insert_single(&mut self, key: MapKey, value: Result<PrimitiveValue, cerr>) {
         self.ensure_inner().insert(key, value.into());
     }
     fn ensure_inner(&mut self) -> &mut BTreeMap<MapKey, DeepExtendable> {
         match self {
             Self::Inner(_) => (),
             Self::Leaf(l) => {
-                let l = std::mem::replace(l, PrimitiveValue::Number(SNumber::Int(0)));
+                let l = std::mem::replace(l, Ok(PrimitiveValue::Number(SNumber::Int(0))));
                 *self = Self::Inner(
                     vec![(MapKey::Str("".into()), DeepExtendable::Leaf(l))]
                         .into_iter()
@@ -307,7 +358,7 @@ impl Default for DeepExtendable {
 }
 
 impl Array {
-    pub fn new(array: Arc<[RuntimeValue]>) -> Self {
+    pub fn new(array: Arc<[Result<RuntimeValue, cerr>]>) -> Self {
         Self(array)
     }
     pub fn keys(&self) -> impl Iterator<Item = MapKey> {
@@ -321,8 +372,24 @@ impl Array {
     pub fn len(&self) -> usize {
         self.0.len()
     }
-    pub fn sum(&self) -> Numeric {
-        self.iter().sum()
+    pub fn sum(&self) -> Result<SNumber, cerr> {
+        let mut out = Numeric::Int(0);
+        for v in self.iter() {
+            match v.as_ref().map_err(|x| *x)? {
+                RuntimeValue::Prim(PrimitiveValue::Number(v)) => {
+                    out = out.q_add_numbers(v, &mut ())
+                }
+                RuntimeValue::Prim(PrimitiveValue::Str(t)) => {
+                    if let Ok(t) = t.parse() {
+                        out = out.q_add_numbers(&Numeric::Int(t), &mut ())
+                    } else if let Ok(t) = t.parse() {
+                        out = out.q_add_numbers(&Numeric::Float(t), &mut ())
+                    }
+                }
+                RuntimeValue::Comp(_) => (),
+            }
+        }
+        Ok(out)
     }
 
     pub fn get(&self, mut key: i64) -> Result<&RuntimeValue, cerr> {
@@ -336,12 +403,16 @@ impl Array {
         let key: usize = key
             .try_into()
             .map_err(|_| cerr::collection_keyInvalidForArray)?;
-        self.0.get(key).ok_or(cerr::collection_valueNotFound)
+        match self.0.get(key) {
+            Some(Ok(t)) => Ok(t),
+            Some(Err(t)) => Err(*t),
+            None => Err(cerr::collection_valueNotFound),
+        }
     }
     pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
-    pub fn iter(&self) -> impl Iterator<Item = &RuntimeValue> {
+    pub fn iter(&self) -> impl Iterator<Item = &Result<RuntimeValue, cerr>> {
         self.0.iter()
     }
 }
@@ -370,19 +441,25 @@ impl<'a> Sum<&'a RuntimeValue> for Numeric {
 
 impl<P: Into<RuntimeValue>> FromIterator<P> for Array {
     fn from_iter<T: IntoIterator<Item = P>>(iter: T) -> Self {
-        Self(iter.into_iter().map(|x| x.into()).collect())
+        Self(iter.into_iter().map(|x| Ok(x.into())).collect())
     }
 }
-impl From<BTreeMap<MapKey, RuntimeValue>> for RealMapping {
-    fn from(value: BTreeMap<MapKey, RuntimeValue>) -> Self {
+
+impl<P: Into<RuntimeValue>> FromIterator<Result<P, cerr>> for Array {
+    fn from_iter<T: IntoIterator<Item = Result<P, cerr>>>(iter: T) -> Self {
+        Self(iter.into_iter().map(|x| x.map(|x| x.into())).collect())
+    }
+}
+impl From<BTreeMap<MapKey, Result<RuntimeValue, cerr>>> for RealMapping {
+    fn from(value: BTreeMap<MapKey, Result<RuntimeValue, cerr>>) -> Self {
         Self {
             mapping: value.into(),
             ..Default::default()
         }
     }
 }
-impl From<Vec<RuntimeValue>> for Array {
-    fn from(value: Vec<RuntimeValue>) -> Self {
+impl From<Vec<Result<RuntimeValue, cerr>>> for Array {
+    fn from(value: Vec<Result<RuntimeValue, cerr>>) -> Self {
         Self(value.into())
     }
 }
@@ -393,7 +470,7 @@ impl From<SList> for Array {
     }
 }
 
-impl From<Array> for BTreeMap<MapKey, RuntimeValue> {
+impl From<Array> for BTreeMap<MapKey, Result<RuntimeValue, cerr>> {
     fn from(value: Array) -> Self {
         value
             .keys()

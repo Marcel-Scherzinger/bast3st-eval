@@ -17,7 +17,7 @@ pub use selector::Selector;
 use serde::{Deserialize, Serialize};
 pub use tasks::{CompiledRegex, SpecificTaskRequest};
 
-use crate::spec::Numeric;
+use crate::spec::{MapKey, Numeric};
 use crate::{catchable::cerr, spec::PrimitiveValue};
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, From, Serialize, Deserialize)]
@@ -39,6 +39,15 @@ pub type RuntimeAnyWithoutCerr = RuntimeAny<NoError>;
 impl From<cerr> for RuntimeAny {
     fn from(value: cerr) -> Self {
         Self::Catchable(value)
+    }
+}
+
+impl From<Result<RealMapping, cerr>> for RuntimeAny {
+    fn from(value: Result<RealMapping, cerr>) -> Self {
+        match value {
+            Ok(x) => Self::from(x),
+            Err(e) => Self::Catchable(e),
+        }
     }
 }
 
@@ -126,5 +135,30 @@ pub trait IntoRuntimeAny {
 impl<T: Into<RuntimeAny>> IntoRuntimeAny for Result<T, cerr> {
     fn into_runtimeany(self) -> RuntimeAny {
         self.map_or_else(RuntimeAny::Catchable, |x| x.into())
+    }
+}
+
+impl From<serde_json::Value> for RuntimeValue {
+    fn from(value: serde_json::Value) -> Self {
+        match value {
+            serde_json::Value::Null | serde_json::Value::Bool(false) => {
+                RuntimeValue::Prim(0.into())
+            }
+            serde_json::Value::Bool(true) => RuntimeValue::Prim(1.into()),
+            serde_json::Value::Array(array) => RuntimeValue::Comp(MappingOrArray::Array(
+                array.into_iter().map(RuntimeValue::from).collect(),
+            )),
+            serde_json::Value::Number(number) => {
+                RuntimeValue::Prim(PrimitiveValue::Number(number.into()))
+            }
+            serde_json::Value::String(txt) => RuntimeValue::Prim(PrimitiveValue::Str(txt.into())),
+            serde_json::Value::Object(mapping) => {
+                RuntimeValue::Comp(MappingOrArray::Mapping(RealMapping::from_iter(
+                    mapping
+                        .into_iter()
+                        .map(|(key, value)| (MapKey::Str(key.into()), RuntimeValue::from(value))),
+                )))
+            }
+        }
     }
 }

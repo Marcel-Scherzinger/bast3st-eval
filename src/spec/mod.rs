@@ -109,6 +109,11 @@ pub type Numeric = scratch_test_value::SNumber;
 #[debug("{_0:?}")]
 pub struct Text(Arc<str>);
 
+#[derive(Debug, Deref, Into, Clone, PartialEq, Eq, PartialOrd, Ord, From, Hash)]
+/// Special type that informs the query system that its also ok to take another primitive and convert it to
+/// text
+pub struct PrimitiveIntoText(Text);
+
 impl Text {
     pub fn from_debug(x: impl Debug) -> Text {
         Text(format!("{x:?}").into())

@@ -4,7 +4,7 @@ use crate::{
     catchable::cerr,
     spec::{
         ActionEntity, CriterionEntity, Entity, EntityId, MapKey, MappingOrArray, Numeric,
-        PrimitiveValue, RealMapping, Text, ValueReference,
+        PrimitiveIntoText, PrimitiveValue, RealMapping, Text, ValueReference,
         machine::Machine,
         runtime::{
             Array, NetworkRequest, NetworkResponse, RuntimeAction, RuntimeCriterion, RuntimeValue,
@@ -171,7 +171,7 @@ impl_possible!(EntityId<Entity>:
     RuntimeCriterion,
     //
     RuntimeValue, PrimitiveValue, Array, MappingOrArray, RealMapping,
-    Text, Numeric, MapKey
+    Text, Numeric, MapKey, PrimitiveIntoText,
 );
 impl_possible!(EntityId<ActionEntity>: RuntimeAction, RuntimeAny);
 impl_possible!(EntityId<CriterionEntity>: RuntimeCriterion, RuntimeAny);
@@ -179,7 +179,8 @@ impl_possible!(EntityId<CriterionEntity>: RuntimeCriterion, RuntimeAny);
 impl_possible!(ValueReference:
     RuntimeAny,
     //
-    RuntimeValue, PrimitiveValue, Array, RealMapping, MappingOrArray, Text, Numeric, MapKey
+    RuntimeValue, PrimitiveValue, Array, RealMapping, MappingOrArray,
+    Text, Numeric, MapKey, PrimitiveIntoText,
 );
 impl_possible!(Selector: RuntimeValue, Array, RealMapping, MappingOrArray, NetworkResponse);
 impl_possible!(NetworkRequest: NetworkResponse);
@@ -227,6 +228,25 @@ impl SpecializeFrom<Text> for PrimitiveValue {
         Self: Sized,
     {
         Ok(Cow::Owned(Self::Str(any.into_owned())))
+    }
+}
+
+impl SpecializeFrom for PrimitiveIntoText {
+    fn specialize_from<'a>(any: Cow<'a, RuntimeAny>) -> Result<Cow<'a, Self>, cerr>
+    where
+        Self: Sized,
+    {
+        match any {
+            Cow::Owned(RuntimeAny::Catchable(err)) => Err(err),
+            Cow::Borrowed(RuntimeAny::Catchable(err)) => Err(*err),
+            Cow::Owned(RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Str(text)))) => {
+                Ok(Cow::Owned(text.into()))
+            }
+            Cow::Borrowed(RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Str(text)))) => {
+                Ok(Cow::Owned(text.clone().into()))
+            }
+            _ => Err(cerr::typing_notPrimitive),
+        }
     }
 }
 

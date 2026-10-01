@@ -5,9 +5,12 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::spec::{
-    Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
-    RuntimeValue, Selector, SetFlagMode, Text,
+use crate::{
+    catchable::cerr,
+    spec::{
+        Coremapping, FatalError, IntoRuntimeAny, MapKey, RealMapping, RuntimeAction, RuntimeAny,
+        RuntimeValue, Selector, SetFlagMode, Text,
+    },
 };
 
 use super::{Features, SelectableSource};
@@ -46,8 +49,8 @@ impl<X> Default for MappingData<X> {
     }
 }
 
-impl<X> From<BTreeMap<MapKey, RuntimeValue>> for MappingData<X> {
-    fn from(value: BTreeMap<MapKey, RuntimeValue>) -> Self {
+impl<X> From<BTreeMap<MapKey, Result<RuntimeValue, cerr>>> for MappingData<X> {
+    fn from(value: BTreeMap<MapKey, Result<RuntimeValue, cerr>>) -> Self {
         Self {
             data: RuntimeAny::Value(RealMapping::from(value).into()),
             _phantom: Default::default(),
@@ -76,7 +79,7 @@ impl<X, K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(K, V)> for MappingData<X
         self.data = flags
             .with_new_keys(
                 iter.into_iter()
-                    .map(|(text, val)| (vec![text.into()].into_iter().collect(), val.into())),
+                    .map(|(text, val)| (vec![text.into()].into_iter().collect(), Ok(val.into()))),
             )
             .into();
     }
@@ -85,12 +88,12 @@ impl<X, K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(K, V)> for MappingData<X
 impl<X, K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(VecDeque<K>, V)> for MappingData<X> {
     fn extend<T: IntoIterator<Item = (VecDeque<K>, V)>>(&mut self, iter: T) {
         let flags: RealMapping = self.as_ref().clone();
-        self.data = flags
-            .with_new_keys(
-                iter.into_iter()
-                    .map(|(text, val)| (text.into_iter().map(|x| x.into()).collect(), val.into())),
-            )
-            .into();
+        self.data =
+            flags
+                .with_new_keys(iter.into_iter().map(|(text, val)| {
+                    (text.into_iter().map(|x| x.into()).collect(), Ok(val.into()))
+                }))
+                .into();
     }
 }
 
@@ -101,7 +104,7 @@ impl<X, K: Into<MapKey>, V: Into<RuntimeValue>> Extend<(Vec<K>, V)> for MappingD
             .with_new_keys(iter.into_iter().map(|(text, val)| {
                 let text = text.into_iter().map(|x| x.into()).collect();
                 let val = val.into();
-                (text, val)
+                (text, Ok(val))
             }))
             .into();
     }
@@ -123,7 +126,7 @@ impl<X> MappingData<X> {
         }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&MapKey, &RuntimeValue)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&MapKey, &Result<RuntimeValue, cerr>)> {
         self.as_ref().iter()
     }
 

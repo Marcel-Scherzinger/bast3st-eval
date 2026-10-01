@@ -6,7 +6,7 @@ use crate::{
     catchable::cerr,
     spec::{
         ActionEntity, EntityId, MachineConstruction, MachineConstructionN, MappingOrArray, Numeric,
-        PrimitiveValue, RuntimeAction, SpecialCritVariant, Text, ValueReference,
+        PrimitiveIntoText, PrimitiveValue, RuntimeAction, SpecialCritVariant, Text, ValueReference,
         machine::Machine,
         runtime::{
             CompiledRegex, InnerRuntimeCriterion, MaybeEval, RuntimeAny, RuntimeCriterion,
@@ -265,16 +265,20 @@ impl CriterionEntity {
                 sup,
             } => {
                 let mut failure_explaination = failure_explaination.clone();
-                (sub, sup).query_n(move |sub: Numeric, sup: Text| {
+                (sub, sup).query_n(move |sub: Numeric, sup: PrimitiveIntoText| {
                     let found: Vec<_> = find_numbers(sup.as_ref()).collect();
                     let contains = found.contains(&sub);
                     if contains {
                         failure_explaination = None;
                     }
                     failure_explaination.query(move |failure_explaination: Option<Text>| {
-                        InnerRuntimeCriterion::ContainNum { sub, sup, found }
-                            .build(contains, failure_explaination)
-                            .into()
+                        InnerRuntimeCriterion::ContainNum {
+                            sub,
+                            sup: sup.into(),
+                            found,
+                        }
+                        .build(contains, failure_explaination)
+                        .into()
                     })
                 })
             }
@@ -284,16 +288,20 @@ impl CriterionEntity {
                 sup,
             } => {
                 let mut failure_explaination = failure_explaination.clone();
-                (sub, sup).query_n(move |sub: Numeric, sup: Text| {
+                (sub, sup).query_n(move |sub: Numeric, sup: PrimitiveIntoText| {
                     let found: Vec<_> = find_numbers(sup.as_ref()).collect();
                     let contains_only = found.contains(&sub) && found.len() == 1;
                     if contains_only {
                         failure_explaination = None;
                     }
                     failure_explaination.query(move |failure_explaination: Option<Text>| {
-                        InnerRuntimeCriterion::ContainNum { sub, sup, found }
-                            .build(contains_only, failure_explaination)
-                            .into()
+                        InnerRuntimeCriterion::ContainNum {
+                            sub,
+                            sup: sup.into(),
+                            found,
+                        }
+                        .build(contains_only, failure_explaination)
+                        .into()
                     })
                 })
             }
@@ -338,11 +346,15 @@ impl CriterionEntity {
                             }
                             RuntimeValue::Comp(MappingOrArray::Array(ref array)) => {
                                 for item in array.iter() {
-                                    if let RuntimeValue::Prim(PrimitiveValue::Str(text)) = item
-                                        && rx.is_match(text)
-                                    {
-                                        is_match = true;
-                                        break;
+                                    match item {
+                                        Ok(RuntimeValue::Prim(PrimitiveValue::Str(text)))
+                                            if rx.is_match(text) =>
+                                        {
+                                            is_match = true;
+                                            break;
+                                        }
+                                        Err(err) => return Machine::from(*err),
+                                        _ => {}
                                     }
                                 }
                             }
@@ -504,13 +516,16 @@ fn eval_containtext(
     sup: &ValueReference,
     failure_explaination: Option<ValueReference>,
 ) -> Machine<RuntimeCriterion> {
-    (sub, sup).query_n(move |sub: PrimitiveValue, sup: Text| {
+    (sub, sup).query_n(move |sub: PrimitiveValue, sup: PrimitiveIntoText| {
         let sub_text = sub.clone().into_text();
         let contains = sup.contains(sub_text.as_ref());
 
-        InnerRuntimeCriterion::ContainText { sub, sup }
-            .build(contains, None)
-            .set_failure_explaination_if_failed(failure_explaination, true)
+        InnerRuntimeCriterion::ContainText {
+            sub,
+            sup: sup.into(),
+        }
+        .build(contains, None)
+        .set_failure_explaination_if_failed(failure_explaination, true)
     })
 }
 

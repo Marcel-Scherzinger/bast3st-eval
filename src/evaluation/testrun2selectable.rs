@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     Features, LogPfx,
+    catchable::cerr,
     evaluation::{
         Context, Rundata, SelectableSource, SingleEvaluation, SingleEvaluationError,
         single_evaluation::EvalSignal,
@@ -188,14 +189,17 @@ fn run_single_test_for_selectable<Hooks>(
             .answer_inputs()
             .iter()
             .map(|x| RuntimeValue::from(Text::from(x.to_string())))
+            .map(Ok)
             .collect::<Vec<_>>(),
         state
             .output_lines()
             .map(|x| RuntimeValue::from(Text::from(x.to_string())))
+            .map(Ok)
             .collect::<Vec<_>>(),
         state
             .used_randoms()
             .map(|x| RuntimeValue::from(*x))
+            .map(Ok)
             .collect::<Vec<_>>(),
         state
             .lists()
@@ -203,20 +207,20 @@ fn run_single_test_for_selectable<Hooks>(
             .map(|x| {
                 (
                     MapKey::Str(x.0.name().to_string().into()),
-                    RuntimeValue::from(Array::from(x.1.clone())),
+                    Ok(RuntimeValue::from(Array::from(x.1.clone()))),
                 )
             })
-            .collect::<BTreeMap<MapKey, RuntimeValue>>(),
+            .collect::<BTreeMap<MapKey, Result<RuntimeValue, cerr>>>(),
         state
             .variables()
             .iter()
             .map(|x| {
                 (
                     MapKey::Str(x.0.name().to_string().into()),
-                    RuntimeValue::from(x.1.clone()),
+                    Ok(RuntimeValue::from(x.1.clone())),
                 )
             })
-            .collect::<BTreeMap<MapKey, RuntimeValue>>(),
+            .collect::<BTreeMap<MapKey, Result<RuntimeValue, cerr>>>(),
     );
     (rundata, state, error, limits)
 }
