@@ -128,7 +128,7 @@ impl<'a, Fallback: SelectableSource, X: ReportBuilderState> ReportBuilder<'a, Fa
             if closure(&x) {
                 Ok(x)
             } else {
-                Err((x, cerr::network_policy_serverNotAllowed))
+                Err((x, cerr::network_policy_other))
             }
         })
     }
@@ -182,9 +182,9 @@ impl<'a, Fallback: SelectableSource> ReportBuilder<'a, Fallback, WithSpec> {
                 doc,
                 initial_block,
                 entities: self.spec.entities().clone(),
-                allowed_network: self.allowed_network.unwrap_or(Arc::new(|x| {
-                    Err((x, cerr::network_policy_serverNotAllowed))
-                })),
+                allowed_network: self
+                    .allowed_network
+                    .unwrap_or(Arc::new(|x| Err((x, cerr::network_policy_other)))),
             },
             (
                 self.log_pfx.unwrap_or(LogPfx::new("")),
