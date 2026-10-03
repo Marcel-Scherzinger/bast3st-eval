@@ -4,10 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-parts.url = "github:hercules-ci/flake-parts";
-    bast3st-py.url = "github:marcel-scherzinger/bast3st-py";
+    bast3st.url = "github:marcel-scherzinger/bast3st";
     # This is necessary for "bast3st" being available as library
-    bast3st-py.inputs.nixpkgs.follows = "nixpkgs";
-    bast3st-py.inputs.flake-parts.follows = "flake-parts";
+    bast3st.inputs.nixpkgs.follows = "nixpkgs";
+    bast3st.inputs.flake-parts.follows = "flake-parts";
   };
   outputs = inputs @ {flake-parts, ...}: let
   in
@@ -35,7 +35,7 @@
         packages.src-catchable-rs =
           pkgs.writers.writePython3Bin "src-catchable-rs" {
             libraries = [
-              inputs.bast3st-py.packages.${system}.bast3st-lib
+              inputs.bast3st.packages.${system}.bast3st-lib
             ];
           }
           # python
@@ -45,11 +45,11 @@
             fallback = "src/catchable/generated.rs"
             outfile = sys.argv[-1] if sys.argv[-1].endswith(".rs") else fallback
 
-            project_url = "https://marcel-scherzinger.github.io/bast3st-py"
+            project_url = "https://marcel-scherzinger.github.io/bast3st"
             base_url = f"{project_url}/ref_caterr.html#bast3st.catchable.err."
 
             options = [
-                f"{' ' * 8}/// See [`bast3st-py.catchable.err.{x.name}`]" +
+                f"{' ' * 8}/// See [`bast3st.catchable.err.{x.name}`]" +
                 f"({base_url}{x.name})\n" +
                 f"{' ' * 8}const {x.name} = {bin(x.value)};"
                 for x in err._member_map_.values()

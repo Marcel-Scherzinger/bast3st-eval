@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 mod generated;
 
-/// See [`bast3st-py.catchable.err`](https://marcel-scherzinger.github.io/bast3st-py/ref_caterr.html#bast3st.catchable.err)
+/// See [`bast3st.catchable.err`](https://marcel-scherzinger.github.io/bast3st/ref_caterr.html#bast3st.catchable.err)
 #[allow(non_camel_case_types)]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]
 pub struct cerr(u32);
