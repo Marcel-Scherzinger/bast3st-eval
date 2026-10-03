@@ -132,6 +132,17 @@ impl<'a, Fallback: SelectableSource, X: ReportBuilderState> ReportBuilder<'a, Fa
             }
         })
     }
+
+    pub fn add_allow_network_cerr_check(
+        self,
+        closure: impl Fn(&AllowNetData) -> Result<(), cerr> + Send + Sync + 'static,
+    ) -> Self {
+        self.add_allow_network_map_check(move |x| match closure(&x) {
+            Ok(()) => Ok(x),
+            Err(err) => Err((x, err)),
+        })
+    }
+
     /// removes all checks and disallows all network access in this way
     pub fn disallow_network(mut self) -> Self {
         self.allowed_network = None;
