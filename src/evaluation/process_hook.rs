@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     Features, LogPfx,
     evaluation::{
-        Context, Effects, SelectableSource, SingleEvaluation, SingleEvaluationError,
+        Context, Effects, SelectableSource, SingleEvaluation, SingleEvaluationError, WithNotice,
         single_evaluation::EvalSignal,
     },
     spec::{ActionEntity, CriterionEntity, EntityId, HookList, RuntimeAction, RuntimeCriterion},
@@ -43,7 +43,11 @@ impl HookList {
         let mut tried = vec![];
         for (index, (crit, act)) in self.iter().enumerate() {
             match execute_hook(ctx, log_pfx.join(index), (&eft, &fallback), feat, crit, act).await {
-                Err(failure) => tried.push(Err(failure)),
+                Err(fail_w_notice) => {
+                    let (failure, notice) = fail_w_notice.into_parts();
+                    eft.extend(notice);
+                    tried.push(Err(failure))
+                }
                 Ok((actions, criterion, signal)) => {
                     tried.push(Ok(HookResult { criterion }));
                     eft.extend(actions);
@@ -73,10 +77,45 @@ async fn execute_hook<Source: SelectableSource>(
         Option<RuntimeCriterion>,
         Option<EvalSignal>,
     ),
-    HookFailure,
+    WithNotice<HookFailure>,
 > {
     let mut actions = vec![];
+    let res = inner_execute_hook(
+        settings,
+        log_pfx,
+        outer_fallback,
+        features,
+        crit,
+        act,
+        &mut actions,
+    )
+    .await;
+    match res {
+        Ok((crit, sig)) => Ok((actions, crit, sig)),
+        Err(failure) => Err(WithNotice::new(
+            failure,
+            actions
+                .into_iter()
+                .flat_map(|a| match a {
+                    RuntimeAction::Notice(notice) => Some(notice),
+                    RuntimeAction::SendMsg(_)
+                    | RuntimeAction::SetFlag(_)
+                    | RuntimeAction::EndThisTest(_) => None,
+                })
+                .collect(),
+        )),
+    }
+}
 
+async fn inner_execute_hook<Source: SelectableSource>(
+    settings: &Context,
+    log_pfx: LogPfx,
+    outer_fallback: Source,
+    features: Features,
+    crit: EntityId<CriterionEntity>,
+    act: EntityId<ActionEntity>,
+    actions: &mut Vec<RuntimeAction>,
+) -> Result<(Option<RuntimeCriterion>, Option<EvalSignal>), HookFailure> {
     let crit_eval = SingleEvaluation::new(
         log_pfx.join("crit"),
         settings.entities(),
@@ -87,7 +126,8 @@ async fn execute_hook<Source: SelectableSource>(
     )
     .map_err(SingleEvaluationError::from)
     .map_err(HookFailure::Criterion)?;
-    let crit_eval = crit_eval.run_to_end_with_early_return().await;
+    let (notice_actions, crit_eval) = crit_eval.run_to_end_with_early_return().await;
+    actions.extend(notice_actions.into_iter().map(RuntimeAction::Notice));
 
     let criterion: Either<EvalSignal, RuntimeCriterion> = crit_eval
         .one_specialized()
@@ -107,10 +147,12 @@ async fn execute_hook<Source: SelectableSource>(
                 )
                 .map_err(SingleEvaluationError::from)
                 .map_err(HookFailure::Action)?;
-                let act_eval = act_eval.run_to_end_with_early_return().await;
+
+                let (notice_actions, act_eval) = act_eval.run_to_end_with_early_return().await;
+                actions.extend(notice_actions.into_iter().map(RuntimeAction::Notice));
 
                 let action: Either<EvalSignal, RuntimeAction> =
-                    act_eval.one_specialized().map_err(HookFailure::Criterion)?;
+                    act_eval.one_specialized().map_err(HookFailure::Action)?;
 
                 actions.extend(crit_eval.into_actions());
                 actions.extend(act_eval.into_actions());
@@ -126,5 +168,5 @@ async fn execute_hook<Source: SelectableSource>(
             }
         }
     };
-    Ok((actions, criterion.right(), eval_signals))
+    Ok((criterion.right(), eval_signals))
 }

@@ -7,7 +7,7 @@ use tokio::task::JoinError;
 use crate::{
     Features, LogPfx, Messages,
     evaluation::{
-        Context, Effects, FatalRunError, PCategory, PSpec, ParamData, SelectableSource,
+        Context, Effects, FatalRunError, PCategory, PSpec, ParamData, SelectableSource, WithNotice,
         initial_block::{InitialBlockAmbiguity, find_initial_block},
         report::{ReportBuilder, WithSpec},
         single_evaluation::EvalSignal,
@@ -20,7 +20,7 @@ pub enum SpecRunError {
     #[error("join: {_0}")]
     Join(#[from] JoinError),
     #[error("run: {_0}")]
-    FatalRun(#[from] FatalRunError),
+    FatalRun(#[from] WithNotice<FatalRunError>),
     #[error("initial-block: {_0}")]
     InitialBlock(#[from] InitialBlockAmbiguity),
 }

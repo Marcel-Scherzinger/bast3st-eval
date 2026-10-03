@@ -4,7 +4,7 @@ use crate::{
     Features, LogPfx,
     evaluation::{
         Context, Effects, PAlternativeTest, PGeneralTest, PMainTest, ProcessedTestStatus,
-        SelectableSource, WithEffects,
+        SelectableSource, WithEffects, WithNotice,
         single_evaluation::EvalSignal,
         testrun2selectable::{ActualTestResultStatus, FatalRunError, run_actual_test},
     },
@@ -69,8 +69,13 @@ impl PMainTest {
         log_pfx: LogPfx,
         test: &MainTest,
         fallback: Fallback,
-    ) -> Result<WithEffects<PMainTest>, MainTestFailure> {
-        process_main_test(ctx, log_pfx, test, fallback).await
+    ) -> Result<WithEffects<PMainTest>, WithNotice<MainTestFailure>> {
+        let mut eft = Effects::default();
+        let out = process_main_test(ctx, log_pfx, test, fallback, &mut eft).await;
+        match out {
+            Ok(data) => Ok(WithEffects::new(data, eft)),
+            Err(data) => Err(WithNotice::new(data, eft.take_notice())),
+        }
     }
 }
 
@@ -79,10 +84,9 @@ async fn process_main_test<Fallback: SelectableSource>(
     log_pfx: LogPfx,
     test: &MainTest,
     fallback: Fallback,
-) -> Result<WithEffects<PMainTest>, MainTestFailure> {
+    eft: &mut Effects,
+) -> Result<PMainTest, MainTestFailure> {
     let hooks = test.general().hooks();
-
-    let mut eft = Effects::default();
 
     // #########################################
     // ### Hooks: before_main
@@ -92,7 +96,7 @@ async fn process_main_test<Fallback: SelectableSource>(
         .run_all(
             ctx,
             log_pfx.join("before-main"),
-            &mut eft,
+            eft,
             Features::PermittedFEAT_PreTestHook,
             &fallback,
         )
@@ -114,7 +118,7 @@ async fn process_main_test<Fallback: SelectableSource>(
             Features::PermittedFEAT_PassTestCrit,
         )
         .await;
-        let status = process_test_status(main_result.status, &mut eft)?;
+        let status = process_test_status(main_result.status, eft)?;
         (status, Some(main_result.testdata))
     };
     // take "current"-level messages for main, don't move this line
@@ -131,7 +135,7 @@ async fn process_main_test<Fallback: SelectableSource>(
             .run_all(
                 ctx,
                 log_pfx.join("before-alternatives"),
-                &mut eft,
+                eft,
                 Features::PermittedFEAT_PostTestHook,
                 (&main_rundata, &fallback),
             )
@@ -143,7 +147,7 @@ async fn process_main_test<Fallback: SelectableSource>(
             try_alternative_tests_of_main(
                 ctx,
                 log_pfx.join("alt"),
-                &mut eft,
+                eft,
                 test.alternative_tests(),
                 &fallback,
             )
@@ -166,7 +170,7 @@ async fn process_main_test<Fallback: SelectableSource>(
             .run_all(
                 ctx,
                 log_pfx.join("after-complete"),
-                &mut eft,
+                eft,
                 Features::PermittedFEAT_PostTestHook,
                 (&main_rundata, &fallback),
             )
@@ -190,7 +194,7 @@ async fn process_main_test<Fallback: SelectableSource>(
         tried_alternatives,
     };
 
-    Ok(WithEffects::new(out, eft))
+    Ok(out)
 }
 
 async fn try_alternative_tests_of_main<Source: SelectableSource>(

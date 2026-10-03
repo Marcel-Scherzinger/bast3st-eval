@@ -452,6 +452,9 @@ fn eval_network_request(
             }
         };
         req.and_then(|resp: NetworkResponse| {
+            log::trace!(
+                "machine received network-resp={resp:?} and should check for status={allowed_status:?}"
+            );
             if allowed_status.is_some_and(|allowed| !allowed.contains(&resp.status())) {
                 return cerr::network_statusDisallowed.into();
             }

@@ -1,7 +1,8 @@
-use std::{borrow::Cow, collections::BTreeMap, fmt::Display, sync::Arc};
+use std::{borrow::Cow, collections::BTreeMap, fmt::Display, str::FromStr, sync::Arc};
 
 use derive_more::{Display, From};
 use either::Either;
+use itertools::Itertools;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 
@@ -159,6 +160,17 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
             Err(EntryPointMissing(entry_point))
         }
     }
+    pub fn extract_notice(&mut self) -> Vec<NoticeAction> {
+        let (left, right) = std::mem::take(&mut self.actions)
+            .into_iter()
+            .partition_map(|act| match act {
+                RuntimeAction::Notice(n) => Either::Left(n),
+                x => Either::Right(x),
+            });
+
+        self.actions = right;
+        left
+    }
 
     /// Run the next step if there is one and return (as bool) if
     /// there was a step to execute.
@@ -193,44 +205,58 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
 
     pub async fn run_to_end_without_early_return(
         mut self,
-    ) -> SingleEvaluation<'e, 's, S, EvaluationFinished> {
+    ) -> (
+        Vec<NoticeAction>,
+        SingleEvaluation<'e, 's, S, EvaluationFinished>,
+    ) {
         while self.run_step().await.is_ok_and(|x| x) {}
-        SingleEvaluation {
-            log_pfx: self.log_pfx,
-            entities: self.entities,
-            selectable: self.selectable,
-            entry_point: self.entry_point,
-            allowed_features: self.allowed_features,
-            values: self.values,
-            machines: self.machines,
-            id_stack: self.id_stack,
-            actions: self.actions,
-            further_steps_and_no_early_termination: self.further_steps_and_no_early_termination,
-            used_features: self.used_features,
-            allowed_network: self.allowed_network,
-            _phantom: Default::default(),
-        }
+        let notice = self.extract_notice();
+        (
+            notice,
+            SingleEvaluation {
+                log_pfx: self.log_pfx,
+                entities: self.entities,
+                selectable: self.selectable,
+                entry_point: self.entry_point,
+                allowed_features: self.allowed_features,
+                values: self.values,
+                machines: self.machines,
+                id_stack: self.id_stack,
+                actions: self.actions,
+                further_steps_and_no_early_termination: self.further_steps_and_no_early_termination,
+                used_features: self.used_features,
+                allowed_network: self.allowed_network,
+                _phantom: Default::default(),
+            },
+        )
     }
 
     pub async fn run_to_end_with_early_return(
         mut self,
-    ) -> SingleEvaluation<'e, 's, S, EvaluationFinishedOrCancelled> {
+    ) -> (
+        Vec<NoticeAction>,
+        SingleEvaluation<'e, 's, S, EvaluationFinishedOrCancelled>,
+    ) {
         while self.run_step().await.is_ok_and(|x| x) {}
-        SingleEvaluation {
-            log_pfx: self.log_pfx,
-            entities: self.entities,
-            selectable: self.selectable,
-            entry_point: self.entry_point,
-            allowed_features: self.allowed_features,
-            values: self.values,
-            machines: self.machines,
-            id_stack: self.id_stack,
-            actions: self.actions,
-            further_steps_and_no_early_termination: self.further_steps_and_no_early_termination,
-            used_features: self.used_features,
-            allowed_network: self.allowed_network,
-            _phantom: Default::default(),
-        }
+        let notice = self.extract_notice();
+        (
+            notice,
+            SingleEvaluation {
+                log_pfx: self.log_pfx,
+                entities: self.entities,
+                selectable: self.selectable,
+                entry_point: self.entry_point,
+                allowed_features: self.allowed_features,
+                values: self.values,
+                machines: self.machines,
+                id_stack: self.id_stack,
+                actions: self.actions,
+                further_steps_and_no_early_termination: self.further_steps_and_no_early_termination,
+                used_features: self.used_features,
+                allowed_network: self.allowed_network,
+                _phantom: Default::default(),
+            },
+        )
     }
     async fn get_selector_value(
         &mut self,
@@ -244,12 +270,31 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
         &mut self,
         task: NetworkRequest,
     ) -> Result<Result<NetworkResponse, cerr>, FatalError> {
-        let url: Result<reqwest::Url, _> = format!(
-            "{}/{}",
-            task.server().trim_end_matches('/'),
-            task.route().trim_start_matches('/')
-        )
-        .parse();
+        let server = task.server().trim_end_matches('/');
+        let route = task.route().trim_start_matches('/');
+        let string_url = format!("{server}/{route}");
+
+        type ParseError = <reqwest::Url as FromStr>::Err;
+        let url: Result<reqwest::Url, ParseError> = string_url.parse();
+
+        let url = url.or_else(|err| {
+            if err == ParseError::RelativeUrlWithoutBase {
+                let url: Result<reqwest::Url, ParseError> =
+                    format!("https://{server}/{route}").parse();
+                log::debug!(
+                    "[{}] original url had no base, adding https:// resulted in {url:?}",
+                    self.log_pfx
+                );
+                url
+            } else {
+                Err(err)
+            }
+        });
+
+        log::info!(
+            "[{}] parsed server={server:?}, route={route:?} to url={url:?}",
+            self.log_pfx
+        );
 
         let url = match url {
             Ok(url) => url,
@@ -264,6 +309,10 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
             }
         };
         let specific = task.into_specific();
+        log::debug!(
+            "[{}] find out if network is allowed: {url:?}, {specific:?}",
+            self.log_pfx
+        );
 
         let decision = (self.allowed_network)((url, specific));
         let (info, response) = match decision {
@@ -294,9 +343,32 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
             },
         };
         let response: Result<Result<NetworkResponse, Text>, cerr> = match response {
-            Err(e) => Err(e),
-            Ok(Ok(o)) => NetworkResponse::new(o).await.map(Ok),
-            Ok(Err(e)) => Ok(Err(e)),
+            Err(e) => {
+                log::info!(
+                    "[{}] network request to s_url={string_url:?} failed or was forbidden: {e:?}",
+                    self.log_pfx
+                );
+                Err(e)
+            }
+            Ok(Ok(o)) => {
+                log::debug!(
+                    "[{}] network request to s_url={string_url:?} returned: {o:?}",
+                    self.log_pfx
+                );
+                let resp = NetworkResponse::new(o).await;
+                log::info!(
+                    "[{}] network request to s_url={string_url:?} resulted in parsed: {resp:?}",
+                    self.log_pfx
+                );
+                resp.map(Ok)
+            }
+            Ok(Err(e)) => {
+                log::info!(
+                    "[{}] network request to s_url={string_url:?} was allowed but failed: {e}",
+                    self.log_pfx
+                );
+                Ok(Err(e))
+            }
         };
         let return_value = response
             .clone()

@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     collections::{BTreeMap, VecDeque},
+    fmt::Debug,
     iter::Sum,
     sync::Arc,
 };
@@ -69,7 +70,7 @@ impl MappingOrArray {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, PartialOrd, From, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, PartialOrd, From, Serialize, Deserialize)]
 #[serde(
     from = "Arc<BTreeMap<MapKey, Result<RuntimeValue, cerr>>>",
     into = "Arc<BTreeMap<MapKey, Result<RuntimeValue, cerr>>>"
@@ -81,6 +82,22 @@ pub struct RealMapping {
     #[serde(skip)]
     default: Result<Box<RuntimeValue>, cerr>,
 }
+
+impl Debug for RealMapping {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.default.as_ref() {
+            Err(&cerr::collection_valueNotFound) => f.write_fmt(format_args!(
+                "RealMapping {{ mapping: {:?} }}",
+                self.mapping
+            )),
+            _ => f.write_fmt(format_args!(
+                "RealMapping {{ mapping: {:?}, default: {:?} }}",
+                self.mapping, self.default
+            )),
+        }
+    }
+}
+
 impl Default for RealMapping {
     fn default() -> Self {
         Self {

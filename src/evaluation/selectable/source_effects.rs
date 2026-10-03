@@ -28,6 +28,9 @@ impl Effects {
     pub fn take_messages<L: MsgType>(&mut self) -> Messages<L> {
         self.messages.drain_msg_of()
     }
+    pub fn take_notice(self) -> Vec<NoticeAction> {
+        self.notice
+    }
     pub fn take_rest(self) -> (FlagData, Vec<NoticeAction>) {
         (self.flags, self.notice)
     }
@@ -61,6 +64,13 @@ impl Extend<RuntimeAction> for Effects {
         self.notice.extend(notice);
     }
 }
+
+impl Extend<NoticeAction> for Effects {
+    fn extend<T: IntoIterator<Item = NoticeAction>>(&mut self, iter: T) {
+        self.notice.extend(iter);
+    }
+}
+
 #[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub struct WithEffects<T> {
     data: T,
@@ -78,5 +88,20 @@ impl<T> WithEffects<T> {
     }
     pub fn into_parts(self) -> (T, Effects) {
         (self.data, self.effects)
+    }
+}
+
+#[derive(Debug, PartialEq, PartialOrd, Clone, thiserror::Error)]
+#[error("notice: {notice:?}, error: {data}")]
+pub struct WithNotice<T> {
+    data: T,
+    notice: Vec<NoticeAction>,
+}
+impl<T> WithNotice<T> {
+    pub fn new(data: T, notice: Vec<NoticeAction>) -> Self {
+        Self { data, notice }
+    }
+    pub fn into_parts(self) -> (T, Vec<NoticeAction>) {
+        (self.data, self.notice)
     }
 }

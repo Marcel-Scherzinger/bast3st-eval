@@ -18,7 +18,7 @@ use crate::{
         single_evaluation::EvalSignal,
     },
     spec::{
-        Array, GeneralTest, MapKey, PrimitiveValue, RandomGeneration, RuntimeAction,
+        Array, GeneralTest, MapKey, NoticeAction, PrimitiveValue, RandomGeneration, RuntimeAction,
         RuntimeCriterion, RuntimeValue, Text,
     },
 };
@@ -59,6 +59,7 @@ pub type ActualTestResultStatus =
 pub struct ActualTestResult {
     pub(crate) status: ActualTestResultStatus,
     pub(crate) testdata: Rundata,
+    pub(crate) notice_actions: Vec<NoticeAction>,
 }
 
 impl ActualTestResult {
@@ -108,6 +109,7 @@ pub(crate) async fn run_actual_test<Hooks, Source: SelectableSource>(
             return ActualTestResult {
                 status: Either::Right(error),
                 testdata,
+                notice_actions: Default::default(),
             };
         }
     }
@@ -122,17 +124,19 @@ pub(crate) async fn run_actual_test<Hooks, Source: SelectableSource>(
         settings.allowed_network().clone(),
     ) {
         Ok(eval) => {
-            let eval = eval.run_to_end_with_early_return().await;
+            let (notice_actions, eval) = eval.run_to_end_with_early_return().await;
             let value: Result<Either<EvalSignal, RuntimeCriterion>, SingleEvaluationError> =
                 eval.one_specialized();
             ActualTestResult {
                 status: Either::Left((eval.into_actions(), value)),
                 testdata,
+                notice_actions,
             }
         }
         Err(err) => ActualTestResult {
             status: Either::Left((Default::default(), Err(err.into()))),
             testdata,
+            notice_actions: Default::default(),
         },
     }
 }

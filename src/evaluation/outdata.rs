@@ -89,3 +89,9 @@ pub enum ProcessedTestStatus {
     Eval(SingleEvaluationError),
     JustFailTestRun(JustFailTestRunError),
 }
+
+impl PSpec {
+    pub fn take_notice(&mut self) -> Vec<NoticeAction> {
+        std::mem::take(&mut self.notice)
+    }
+}
