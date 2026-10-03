@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::evaluation::{FatalRunError, initial_block::InitialBlockAmbiguity};
+use crate::evaluation::{FatalRunError, WithNotice, initial_block::InitialBlockAmbiguity};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Error, Serialize, Deserialize)]
 pub enum NoError {}
@@ -14,5 +14,5 @@ pub enum ProgramDocError {
     #[error("initial-block/green-flag: {_0}")]
     InitialBlock(#[from] InitialBlockAmbiguity),
     #[error("run: {_0}")]
-    FatalRun(#[from] FatalRunError),
+    FatalRun(#[from] WithNotice<FatalRunError>),
 }

@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use derive_getters::Getters;
 use either::Either;
 use itertools::Itertools;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     Features, Messages,
@@ -91,7 +92,7 @@ impl<T> WithEffects<T> {
     }
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Clone, thiserror::Error)]
+#[derive(Debug, PartialEq, PartialOrd, Clone, thiserror::Error, Serialize, Deserialize)]
 #[error("notice: {notice:?}, error: {data}")]
 pub struct WithNotice<T> {
     data: T,
@@ -103,5 +104,8 @@ impl<T> WithNotice<T> {
     }
     pub fn into_parts(self) -> (T, Vec<NoticeAction>) {
         (self.data, self.notice)
+    }
+    pub fn take_notice(&mut self) -> Vec<NoticeAction> {
+        std::mem::take(&mut self.notice)
     }
 }
