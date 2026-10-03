@@ -81,7 +81,26 @@ impl<'a, Fallback: SelectableSource, X: ReportBuilderState> ReportBuilder<'a, Fa
         self.fallback = fb;
         self
     }
-    pub fn allow_network_map(
+
+    pub fn add_allow_network_map_check(
+        self,
+        closure: impl Fn(AllowNetData) -> Result<AllowNetData, (AllowNetData, cerr)>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        if let Some(first_check) = self.allowed_network.clone() {
+            self.only_allow_network_map(move |input| {
+                let input = first_check(input)?;
+                closure(input)
+            })
+        } else {
+            self.only_allow_network_map(closure)
+        }
+    }
+    /// This removes all previouse verifying levels
+    /// and sets the given closure as the only check
+    fn only_allow_network_map(
         mut self,
         closure: impl Fn(AllowNetData) -> Result<AllowNetData, (AllowNetData, cerr)>
         + Send
@@ -91,17 +110,32 @@ impl<'a, Fallback: SelectableSource, X: ReportBuilderState> ReportBuilder<'a, Fa
         self.allowed_network = Some(Arc::from(closure));
         self
     }
-    pub fn allow_network_if(
+    #[allow(unused)]
+    /// This removes all previouse verifying levels
+    /// and sets the given closure as the only check
+    fn only_allow_network_if(
+        mut self,
+        closure: impl Fn(&AllowNetData) -> bool + Send + Sync + 'static,
+    ) -> Self {
+        self.allowed_network = None;
+        self.add_allow_network_if_check(closure)
+    }
+    pub fn add_allow_network_if_check(
         self,
         closure: impl Fn(&AllowNetData) -> bool + Send + Sync + 'static,
     ) -> Self {
-        self.allow_network_map(move |x| {
+        self.add_allow_network_map_check(move |x| {
             if closure(&x) {
                 Ok(x)
             } else {
                 Err((x, cerr::network_policy_serverNotAllowed))
             }
         })
+    }
+    /// removes all checks and disallows all network access in this way
+    pub fn disallow_network(mut self) -> Self {
+        self.allowed_network = None;
+        self
     }
 }
 
