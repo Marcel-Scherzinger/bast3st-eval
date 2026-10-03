@@ -8,7 +8,7 @@ use crate::{
     LogPfx,
     catchable::cerr,
     evaluation::{
-        Context, PSpec, SelectableSource, process_spec::SpecRunError,
+        AllowNetData, Context, PSpec, SelectableSource, process_spec::SpecRunError,
         single_evaluation::AllowedNetClosure,
     },
     spec::{Bast3StSpec, RealMapping},
@@ -80,6 +80,28 @@ impl<'a, Fallback: SelectableSource, X: ReportBuilderState> ReportBuilder<'a, Fa
     pub fn with_fallback(mut self, fb: Option<Fallback>) -> Self {
         self.fallback = fb;
         self
+    }
+    pub fn allow_network_map(
+        mut self,
+        closure: impl Fn(AllowNetData) -> Result<AllowNetData, (AllowNetData, cerr)>
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
+        self.allowed_network = Some(Arc::from(closure));
+        self
+    }
+    pub fn allow_network_if(
+        self,
+        closure: impl Fn(&AllowNetData) -> bool + Send + Sync + 'static,
+    ) -> Self {
+        self.allow_network_map(move |x| {
+            if closure(&x) {
+                Ok(x)
+            } else {
+                Err((x, cerr::network_policy_serverNotAllowed))
+            }
+        })
     }
 }
 
