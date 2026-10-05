@@ -33,7 +33,7 @@ pub struct Category {
 pub struct MainTest {
     #[serde(flatten)]
     general: GeneralTest<MainTestHooks>,
-    #[serde(rename = "tests", default)]
+    #[serde(rename = "alternatives", default)]
     alternative_tests: Vec<AlternativeTest>,
 }
 
