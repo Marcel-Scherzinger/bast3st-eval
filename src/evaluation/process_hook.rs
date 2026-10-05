@@ -41,6 +41,10 @@ impl HookList {
         fallback: Source,
     ) -> (FallibleHookResults, Option<EvalSignal>) {
         let mut tried = vec![];
+        log::debug!(
+            "[{log_pfx}] enter hook execution loop, hook count: {}",
+            self.iter().count()
+        );
         for (index, (crit, act)) in self.iter().enumerate() {
             match execute_hook(ctx, log_pfx.join(index), (&eft, &fallback), feat, crit, act).await {
                 Err(fail_w_notice) => {
@@ -54,12 +58,18 @@ impl HookList {
 
                     if let Some(signal) = signal {
                         match &signal {
-                            EvalSignal::EndTest(_) => return (tried, Some(signal)),
+                            EvalSignal::EndTest(_) => {
+                                log::debug!(
+                                    "[{log_pfx}] early return from hook execution loop after hook number {index}",
+                                );
+                                return (tried, Some(signal));
+                            }
                         }
                     }
                 }
             }
         }
+        log::trace!("[{log_pfx}] exit from hook execution loop after all hooks");
         (tried, None)
     }
 }

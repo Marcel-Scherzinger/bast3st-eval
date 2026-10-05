@@ -127,6 +127,17 @@ async fn process_main_test<Fallback: SelectableSource>(
     // ### Initiate alternatives if test proceedable
     // #############################################
     let mut before_alternatives = Default::default();
+
+    if !main_status.proceedable() {
+        log::debug!(
+            "[{log_pfx}] the main test's status is non-proceedable, so all alternatives and further hooks are skipped."
+        )
+    } else if main_status.is_successful() {
+        log::debug!(
+            "[{log_pfx}] the main test's status is successful so before-alternatives-hooks and alternative tests are skipped"
+        );
+    }
+
     let tried_alternatives = if main_status.proceedable() && !main_status.is_successful() {
         // TODO: adjust documentation about this hook
         let sig;
