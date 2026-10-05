@@ -122,6 +122,7 @@ async fn process_main_test<Fallback: SelectableSource>(
         (status, Some(main_result.testdata))
     };
     let mut combi_status = MainTestProcessedTestStatus {
+        is_successful: main_status.is_successful(),
         main_status,
         alternative_status: None,
     };
@@ -177,6 +178,7 @@ async fn process_main_test<Fallback: SelectableSource>(
                         "[{log_pfx}] one alternative succeeded so the main test will be counted as successful"
                     );
                     combi_status.alternative_status = Some(last.general().status().clone());
+                    combi_status.is_successful = last.general().status().is_successful();
                 } else {
                     log::debug!(
                         "[{log_pfx}] no alternative succeeded so the main test still fails"

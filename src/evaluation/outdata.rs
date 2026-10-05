@@ -96,6 +96,7 @@ pub enum ProcessedTestStatus {
 #[derive(Debug, PartialEq, PartialOrd, Clone, From, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct MainTestProcessedTestStatus {
+    pub(crate) is_successful: bool,
     pub(crate) main_status: ProcessedTestStatus,
     #[serde(skip_serializing_if = "is_default")]
     pub(crate) alternative_status: Option<ProcessedTestStatus>,
