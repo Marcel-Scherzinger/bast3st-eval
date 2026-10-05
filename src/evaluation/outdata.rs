@@ -51,16 +51,18 @@ pub struct PCategory {
 pub struct PMainTest {
     #[serde(skip_serializing_if = "is_default")]
     pub(crate) messages: Messages<MainTest>,
-    pub(crate) general: PGeneralTest<MainTestHooks<FallibleHookResults>>,
+    pub(crate) general:
+        PGeneralTest<MainTestProcessedTestStatus, MainTestHooks<FallibleHookResults>>,
     #[serde(skip_serializing_if = "is_default")]
     pub(crate) tried_alternatives: Vec<PAlternativeTest>,
 }
 
 impl PMainTest {
-    pub fn final_status(&self) -> &ProcessedTestStatus {
-        self.tried_alternatives
-            .last()
-            .map_or(&self.general.status, |alt| &alt.general.status)
+    pub fn final_status(&self) -> &MainTestProcessedTestStatus {
+        &self.general.status
+        //self.tried_alternatives
+        //.last()
+        //.map_or(&self.general.status, |alt| &alt.general.status)
     }
 }
 
@@ -68,13 +70,15 @@ impl PMainTest {
 pub struct PAlternativeTest {
     #[serde(skip_serializing_if = "is_default")]
     pub(crate) messages: Messages<AlternativeTest>,
-    pub(crate) general: PGeneralTest<AlternativeTestHooks<FallibleHookResults>>,
+    pub(crate) general:
+        PGeneralTest<ProcessedTestStatus, AlternativeTestHooks<FallibleHookResults>>,
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, Getters, Serialize, Deserialize)]
-pub struct PGeneralTest<Hooks: Default + PartialEq> {
+pub struct PGeneralTest<Status, Hooks: Default + PartialEq> {
     pub(crate) title: Text,
-    pub(crate) status: ProcessedTestStatus,
+    #[serde(flatten)]
+    pub(crate) status: Status,
     #[serde(skip_serializing_if = "is_default")]
     pub(crate) hooks: Hooks,
     #[serde(skip_serializing_if = "is_default")]
@@ -88,6 +92,13 @@ pub enum ProcessedTestStatus {
     Criterion(RuntimeCriterion),
     Eval(SingleEvaluationError),
     JustFailTestRun(JustFailTestRunError),
+}
+#[derive(Debug, PartialEq, PartialOrd, Clone, From, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct MainTestProcessedTestStatus {
+    pub(crate) main_status: ProcessedTestStatus,
+    #[serde(skip_serializing_if = "is_default")]
+    pub(crate) alternative_status: Option<ProcessedTestStatus>,
 }
 
 impl PSpec {
