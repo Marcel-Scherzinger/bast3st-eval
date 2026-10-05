@@ -211,24 +211,28 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
     ) {
         while self.run_step().await.is_ok_and(|x| x) {}
         let notice = self.extract_notice();
-        (
-            notice,
-            SingleEvaluation {
-                log_pfx: self.log_pfx,
-                entities: self.entities,
-                selectable: self.selectable,
-                entry_point: self.entry_point,
-                allowed_features: self.allowed_features,
-                values: self.values,
-                machines: self.machines,
-                id_stack: self.id_stack,
-                actions: self.actions,
-                further_steps_and_no_early_termination: self.further_steps_and_no_early_termination,
-                used_features: self.used_features,
-                allowed_network: self.allowed_network,
-                _phantom: Default::default(),
-            },
-        )
+        let eval = SingleEvaluation {
+            log_pfx: self.log_pfx,
+            entities: self.entities,
+            selectable: self.selectable,
+            entry_point: self.entry_point,
+            allowed_features: self.allowed_features,
+            values: self.values,
+            machines: self.machines,
+            id_stack: self.id_stack,
+            actions: self.actions,
+            further_steps_and_no_early_termination: self.further_steps_and_no_early_termination,
+            used_features: self.used_features,
+            allowed_network: self.allowed_network,
+            _phantom: Default::default(),
+        };
+
+        log::debug!(
+            "[{}] evaluation with forbidden early return reached final result {:?}",
+            eval.log_pfx,
+            eval.value()
+        );
+        (notice, eval)
     }
 
     pub async fn run_to_end_with_early_return(
@@ -239,24 +243,28 @@ impl<'e, 's, S: SelectableSource> SingleEvaluation<'e, 's, S, EvaluationRunning>
     ) {
         while self.run_step().await.is_ok_and(|x| x) {}
         let notice = self.extract_notice();
-        (
-            notice,
-            SingleEvaluation {
-                log_pfx: self.log_pfx,
-                entities: self.entities,
-                selectable: self.selectable,
-                entry_point: self.entry_point,
-                allowed_features: self.allowed_features,
-                values: self.values,
-                machines: self.machines,
-                id_stack: self.id_stack,
-                actions: self.actions,
-                further_steps_and_no_early_termination: self.further_steps_and_no_early_termination,
-                used_features: self.used_features,
-                allowed_network: self.allowed_network,
-                _phantom: Default::default(),
-            },
-        )
+
+        let eval = SingleEvaluation {
+            log_pfx: self.log_pfx,
+            entities: self.entities,
+            selectable: self.selectable,
+            entry_point: self.entry_point,
+            allowed_features: self.allowed_features,
+            values: self.values,
+            machines: self.machines,
+            id_stack: self.id_stack,
+            actions: self.actions,
+            further_steps_and_no_early_termination: self.further_steps_and_no_early_termination,
+            used_features: self.used_features,
+            allowed_network: self.allowed_network,
+            _phantom: Default::default(),
+        };
+        log::debug!(
+            "[{}] evaluation with allowed early return reached final result {:?}",
+            eval.log_pfx,
+            eval.value()
+        );
+        (notice, eval)
     }
     async fn get_selector_value(
         &mut self,
