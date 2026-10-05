@@ -249,7 +249,12 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
         // #########################################
         let (mut alt_status, alt_rundata) = if let Some(sig) = sig {
             match sig {
-                EvalSignal::EndTest(end) => (end.into(), None),
+                EvalSignal::EndTest(end) => {
+                    log::debug!(
+                        "[{log_pfx}] a hook send a signal that caused the alternative test to finish early: {end:?}"
+                    );
+                    (end.into(), None)
+                }
             }
         } else {
             log::debug!("[{log_pfx}] start actual run of alternative test with index {index}");
@@ -262,6 +267,9 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
             )
             .await;
             let alternative_status = process_test_status(alternative_result.status, eft)?;
+            log::debug!(
+                "[{log_pfx}] actual run of alternative test with index {index} ended with status: {alternative_status:?}"
+            );
             (alternative_status, Some(alternative_result.testdata))
         };
 
