@@ -89,7 +89,6 @@ pub struct PAlternativeTest {
 pub struct PGeneralTest<Hooks: Default + PartialEq> {
     pub(crate) title: Text,
     pub(crate) is_successful: bool,
-    #[serde(flatten)]
     pub(crate) status: ProcessedTestStatus,
     #[serde(skip_serializing_if = "is_default")]
     pub(crate) hooks: Hooks,
