@@ -3,8 +3,8 @@ use either::Either;
 use crate::{
     Features, LogPfx,
     evaluation::{
-        Context, Effects, MainTestProcessedTestStatus, PAlternativeTest, PGeneralTest, PMainTest,
-        ProcessedTestStatus, SelectableSource, WithEffects, WithNotice,
+        Context, Effects, PAlternativeTest, PGeneralTest, PMainTest, ProcessedTestStatus,
+        SelectableSource, WithEffects, WithNotice,
         single_evaluation::EvalSignal,
         testrun2selectable::{ActualTestResultStatus, FatalRunError, run_actual_test},
     },
@@ -22,11 +22,16 @@ impl ProcessedTestStatus {
             },
         }
     }
-    pub fn maybe_overwrite_with_signal(&mut self, signal: Option<EvalSignal>) -> &mut Self {
+    pub fn maybe_overwrite_with_signal(
+        &mut self,
+        log_pfx: &LogPfx,
+        signal: Option<EvalSignal>,
+    ) -> &mut Self {
         #[allow(clippy::collapsible_match)]
         match signal {
             Some(EvalSignal::EndTest(end)) => {
                 if self.proceedable() {
+                    log::debug!("[{log_pfx}] test status is updated by signal to {end:?}");
                     *self = end.into();
                 }
             }
@@ -105,7 +110,7 @@ async fn process_main_test<Fallback: SelectableSource>(
     // #########################################
     // ### Actual test if hooks send no signal
     // #########################################
-    let (main_status, main_rundata) = if let Some(sig) = sig {
+    let (mut main_status, main_rundata) = if let Some(sig) = sig {
         match sig {
             EvalSignal::EndTest(end_this_test) => (end_this_test.into(), None),
         }
@@ -121,12 +126,6 @@ async fn process_main_test<Fallback: SelectableSource>(
         let status = process_test_status(main_result.status, eft)?;
         (status, Some(main_result.testdata))
     };
-    let mut combi_status = MainTestProcessedTestStatus {
-        is_successful: main_status.is_successful(),
-        main_status,
-        alternative_status: None,
-    };
-    let main_status = &mut combi_status.main_status;
 
     // take "current"-level messages for main, don't move this line
     let mut messages = eft.take_messages();
@@ -161,31 +160,16 @@ async fn process_main_test<Fallback: SelectableSource>(
         // ###############################################
         // ### Actual alternatives if hooks send no signal
         // ###############################################
-        main_status.maybe_overwrite_with_signal(sig);
+        main_status.maybe_overwrite_with_signal(&log_pfx, sig);
         if main_status.proceedable() {
-            let tried = try_alternative_tests_of_main(
+            try_alternative_tests_of_main(
                 ctx,
                 log_pfx.join("alt"),
                 eft,
                 test.alternative_tests(),
                 &fallback,
             )
-            .await?;
-            if let Some(last) = tried.last() {
-                let successful = last.general().status().is_successful();
-                if successful {
-                    log::debug!(
-                        "[{log_pfx}] one alternative succeeded so the main test will be counted as successful"
-                    );
-                    combi_status.alternative_status = Some(last.general().status().clone());
-                    combi_status.is_successful = last.general().status().is_successful();
-                } else {
-                    log::debug!(
-                        "[{log_pfx}] no alternative succeeded so the main test still fails"
-                    );
-                }
-            }
-            tried
+            .await?
         } else {
             log::debug!(
                 "[{log_pfx}] hooks caused the status to be non-proceedable so no alternatives are tried"
@@ -194,6 +178,21 @@ async fn process_main_test<Fallback: SelectableSource>(
         }
     } else {
         vec![]
+    };
+
+    let alt_makes_successful = if let Some(last) = tried_alternatives.last() {
+        let successful = last.general().status().is_successful();
+        if successful {
+            log::debug!(
+                "[{log_pfx}] one alternative succeeded so the main test will be counted as successful"
+            );
+            true
+        } else {
+            log::debug!("[{log_pfx}] no alternative succeeded so the main test still fails");
+            false
+        }
+    } else {
+        false
     };
 
     // #########################################
@@ -212,15 +211,16 @@ async fn process_main_test<Fallback: SelectableSource>(
                 (&main_rundata, &fallback),
             )
             .await;
-        main_status.maybe_overwrite_with_signal(sig);
+        main_status.maybe_overwrite_with_signal(&log_pfx, sig);
     }
 
     messages.extend(eft.take_messages());
     let out = PMainTest {
         messages,
         general: PGeneralTest {
+            is_successful: main_status.is_successful() || alt_makes_successful,
             title: test.general().title().clone().into(),
-            status: combi_status,
+            status: main_status,
             data: main_rundata,
             hooks: MainTestHooks {
                 before_main,
@@ -311,13 +311,14 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
                     (&alt_rundata, &fallback),
                 )
                 .await;
-            alt_status.maybe_overwrite_with_signal(sig);
+            alt_status.maybe_overwrite_with_signal(&log_pfx, sig);
         }
 
         let no_other_alternatives_needed = alt_status.is_successful();
         tried_alternatives.push(PAlternativeTest {
             messages: eft.take_messages(),
             general: PGeneralTest {
+                is_successful: alt_status.is_successful(),
                 title: alternative.general().title().clone().into(),
                 status: alt_status,
                 data: alt_rundata,

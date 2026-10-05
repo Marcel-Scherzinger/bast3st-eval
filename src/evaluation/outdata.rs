@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use derive_getters::Getters;
 use derive_more::From;
 use serde::{Deserialize, Serialize};
@@ -51,34 +53,44 @@ pub struct PCategory {
 pub struct PMainTest {
     #[serde(skip_serializing_if = "is_default")]
     pub(crate) messages: Messages<MainTest>,
-    pub(crate) general:
-        PGeneralTest<MainTestProcessedTestStatus, MainTestHooks<FallibleHookResults>>,
+    pub(crate) general: PGeneralTest<MainTestHooks<FallibleHookResults>>,
     #[serde(skip_serializing_if = "is_default")]
     pub(crate) tried_alternatives: Vec<PAlternativeTest>,
 }
 
+#[derive(Debug, PartialEq, PartialOrd, Clone, Getters, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct FinalMainTestStatus<'a> {
+    pub(crate) main_status: Cow<'a, ProcessedTestStatus>,
+    pub(crate) alternative_status: Option<Cow<'a, ProcessedTestStatus>>,
+}
+
 impl PMainTest {
-    pub fn final_status(&self) -> &MainTestProcessedTestStatus {
-        &self.general.status
-        //self.tried_alternatives
-        //.last()
-        //.map_or(&self.general.status, |alt| &alt.general.status)
+    pub fn final_status<'a>(&'a self) -> FinalMainTestStatus<'a> {
+        let mstatus = self.general().status();
+        let astatus = self.tried_alternatives.last().map(|x| x.general().status());
+        FinalMainTestStatus {
+            main_status: Cow::Borrowed(mstatus),
+            alternative_status: astatus.map(Cow::Borrowed),
+        }
     }
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, Getters, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct PAlternativeTest {
     #[serde(skip_serializing_if = "is_default")]
     pub(crate) messages: Messages<AlternativeTest>,
-    pub(crate) general:
-        PGeneralTest<ProcessedTestStatus, AlternativeTestHooks<FallibleHookResults>>,
+    pub(crate) general: PGeneralTest<AlternativeTestHooks<FallibleHookResults>>,
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Clone, Getters, Serialize, Deserialize)]
-pub struct PGeneralTest<Status, Hooks: Default + PartialEq> {
+#[serde(rename_all = "kebab-case")]
+pub struct PGeneralTest<Hooks: Default + PartialEq> {
     pub(crate) title: Text,
+    pub(crate) is_successful: bool,
     #[serde(flatten)]
-    pub(crate) status: Status,
+    pub(crate) status: ProcessedTestStatus,
     #[serde(skip_serializing_if = "is_default")]
     pub(crate) hooks: Hooks,
     #[serde(skip_serializing_if = "is_default")]
@@ -92,14 +104,6 @@ pub enum ProcessedTestStatus {
     Criterion(RuntimeCriterion),
     Eval(SingleEvaluationError),
     JustFailTestRun(JustFailTestRunError),
-}
-#[derive(Debug, PartialEq, PartialOrd, Clone, From, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub struct MainTestProcessedTestStatus {
-    pub(crate) is_successful: bool,
-    pub(crate) main_status: ProcessedTestStatus,
-    #[serde(skip_serializing_if = "is_default")]
-    pub(crate) alternative_status: Option<ProcessedTestStatus>,
 }
 
 impl PSpec {
