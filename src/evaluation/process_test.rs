@@ -154,7 +154,8 @@ async fn process_main_test<Fallback: SelectableSource>(
         // ###############################################
         // ### Actual alternatives if hooks send no signal
         // ###############################################
-        if main_status.maybe_overwrite_with_signal(sig).proceedable() {
+        main_status.maybe_overwrite_with_signal(sig);
+        if main_status.proceedable() {
             try_alternative_tests_of_main(
                 ctx,
                 log_pfx.join("alt"),
@@ -164,6 +165,9 @@ async fn process_main_test<Fallback: SelectableSource>(
             )
             .await?
         } else {
+            log::debug!(
+                "[{log_pfx}] hooks caused the status to be non-proceedable so no alternatives are tried"
+            );
             vec![]
         }
     } else {
@@ -216,7 +220,13 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
     fallback: Source,
 ) -> Result<Vec<PAlternativeTest>, MainTestFailure> {
     let mut tried_alternatives = vec![];
+    log::trace!("[{log_pfx}] enter alternatives-loop");
+
+    let mut count = 0;
+
     for (index, alternative) in alternatives.into_iter().enumerate() {
+        log::debug!("[{log_pfx}] start considering alternative test with index {index}");
+        count += 1;
         let log_pfx = log_pfx.join(index);
         let alt_hooks = alternative.general().hooks();
 
@@ -242,6 +252,7 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
                 EvalSignal::EndTest(end) => (end.into(), None),
             }
         } else {
+            log::debug!("[{log_pfx}] start actual run of alternative test with index {index}");
             let alternative_result = run_actual_test(
                 ctx,
                 log_pfx.join("alt"),
@@ -290,5 +301,7 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
             break;
         }
     }
+
+    log::debug!("[{log_pfx}] exit alternatives-loop after {count} tried alternatives");
     Ok(tried_alternatives)
 }
