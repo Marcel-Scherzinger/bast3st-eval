@@ -218,7 +218,7 @@ async fn process_main_test<Fallback: SelectableSource>(
     let out = PMainTest {
         messages,
         general: PGeneralTest {
-            is_successful: main_status.is_successful() || alt_makes_successful,
+            is_passed: main_status.is_successful() || alt_makes_successful,
             title: test.general().title().clone().into(),
             status: main_status,
             data: main_rundata,
@@ -318,7 +318,7 @@ async fn try_alternative_tests_of_main<Source: SelectableSource>(
         tried_alternatives.push(PAlternativeTest {
             messages: eft.take_messages(),
             general: PGeneralTest {
-                is_successful: alt_status.is_successful(),
+                is_passed: alt_status.is_successful(),
                 title: alternative.general().title().clone().into(),
                 status: alt_status,
                 data: alt_rundata,
