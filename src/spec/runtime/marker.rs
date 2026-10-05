@@ -245,6 +245,14 @@ impl SpecializeFrom for PrimitiveIntoText {
             Cow::Borrowed(RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Str(text)))) => {
                 Ok(Cow::Owned(text.clone().into()))
             }
+
+            Cow::Owned(RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Number(num)))) => {
+                Ok(Cow::Owned(num.to_string().into()))
+            }
+            Cow::Borrowed(RuntimeAny::Value(RuntimeValue::Prim(PrimitiveValue::Number(num)))) => {
+                Ok(Cow::Owned(num.to_string().into()))
+            }
+
             _ => Err(cerr::typing_notPrimitive),
         }
     }

@@ -126,6 +126,12 @@ impl From<String> for Text {
     }
 }
 
+impl From<String> for PrimitiveIntoText {
+    fn from(value: String) -> Self {
+        Self(value.into())
+    }
+}
+
 impl<'a> From<&'a str> for Text {
     fn from(value: &'a str) -> Self {
         Self(value.into())
