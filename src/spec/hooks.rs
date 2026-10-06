@@ -34,6 +34,8 @@ pub struct CategoryHooks<HL = HookList> {
 pub struct MainTestHooks<HL = HookList> {
     #[serde(rename = "before-main", default)]
     pub(crate) before_main: HL,
+    #[serde(rename = "after-main", default)]
+    pub(crate) after_main: HL,
     #[serde(rename = "before-alternatives", default)]
     pub(crate) before_alternatives: HL,
     #[serde(rename = "after-complete", default)]

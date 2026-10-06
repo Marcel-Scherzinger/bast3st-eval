@@ -127,6 +127,18 @@ async fn process_main_test<Fallback: SelectableSource>(
         (status, Some(main_result.testdata))
     };
 
+    let (after_main, sig) = hooks
+        .after_main()
+        .run_all(
+            ctx,
+            log_pfx.join("after-main"),
+            eft,
+            Features::PermittedFEAT_PostTestHook,
+            (&main_rundata, &fallback),
+        )
+        .await;
+    main_status.maybe_overwrite_with_signal(&log_pfx, sig);
+
     // take "current"-level messages for main, don't move this line
     let mut messages = eft.take_messages();
     // #############################################
@@ -224,6 +236,7 @@ async fn process_main_test<Fallback: SelectableSource>(
             data: main_rundata,
             hooks: MainTestHooks {
                 before_main,
+                after_main,
                 before_alternatives,
                 after_complete,
             },
