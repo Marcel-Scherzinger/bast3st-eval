@@ -1,4 +1,4 @@
-//! # Bast3St eval
+#![doc = include_str!("../README.md")]
 //!
 //! ## [`ReportBuilder`](evaluation::ReportBuilder)
 //!
